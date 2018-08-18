@@ -1,5 +1,6 @@
 __author__ = 'max'
 
+from typing import Dict, Tuple
 import torch
 import torch.nn as nn
 
@@ -8,8 +9,13 @@ class Encoder(nn.Module):
     """
     Encoder base class
     """
+    _registry = dict()
+
     def __init__(self):
         super(Encoder, self).__init__()
+
+    def z_shape(self) -> Tuple:
+        raise NotImplementedError
 
     def sample_from_posterior(self, x, nsamples=1):
         '''
@@ -86,4 +92,16 @@ class Encoder(nn.Module):
             The tensor of the log posterior probabilities of z|x shape = [batch, nsamples]
 
         '''
+        raise NotImplementedError
+
+    @classmethod
+    def register(cls, name: str):
+        Encoder._registry[name] = cls
+
+    @classmethod
+    def by_name(cls, name: str):
+        return Encoder._registry[name]
+
+    @classmethod
+    def from_params(cls, params: Dict):
         raise NotImplementedError

@@ -2,12 +2,13 @@ __author__ = 'max'
 
 import math
 from overrides import overrides
+from typing import Dict, Tuple
 import torch
 import torch.nn as nn
 
-from mae.modules import Encoder
-from mae.modules import EncoderCore
-from mae.modules import Flow
+from mae.modules.encoders.encoder import Encoder
+from mae.modules.encoders.encoder_cores.encoder_core import EncoderCore
+from mae.modules.flows.flow import Flow
 
 
 class GaussianEncoder(Encoder):
@@ -20,6 +21,10 @@ class GaussianEncoder(Encoder):
                 flow = nn.DataParallel(flow, device_ids=list(range(ngpu)))
         self.core = core
         self.flow = flow
+
+    @overrides
+    def z_shape(self) -> Tuple:
+        return self.core.output_size()
 
     def reparameterize(self, mu, logvar, nsamples=1):
         # [batch, z_shape]
@@ -189,3 +194,18 @@ class GaussianEncoder(Encoder):
         # [batch, nsamples, nz] --> [batch, nsamples]
         log_probs = log_probs.view(z_size[0], z_size[1], -1).sum(dim=2) * -0.5 - logdet
         return log_probs
+
+    @classmethod
+    def from_params(cls, params: Dict) -> "GaussianEncoder":
+        core_params = params.pop('core')
+        core = EncoderCore.by_name(core_params.pop('type')).from_params(core_params)
+
+        flow = None
+        flow_params = params.pop('flow', None)
+        if flow_params is not None:
+            flow = Flow.by_name(flow_params.pop('type')).from_params(flow_params)
+
+        return GaussianEncoder(core, flow, **params)
+
+
+GaussianEncoder.register('gaussian')
