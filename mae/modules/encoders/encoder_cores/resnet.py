@@ -21,24 +21,29 @@ class ResnetEncoderCoreBinaryImage28x28(EncoderCore):
         self.nz = nz
         self.nc = 1
         self.main = nn.Sequential(
-            ResNet(self.nc, [64, 64, 64], [2, 2, 2]),
-            nn.Conv2d(64, 2 * nz, 4, 1, 0, bias=False),
+            ResNet(self.nc, [32, 64, 64], [2, 2, 2]),
+            nn.Conv2d(64, 512, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(512),
+            nn.ELU(),
         )
+        self.linear = nn.Linear(512, 2 * nz)
         self.reset_parameters()
 
     def reset_parameters(self):
-        with torch.no_grad():
-            for m in self.main.modules():
-                if isinstance(m, nn.Conv2d):
-                    n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                    m.weight.normal_(0, math.sqrt(2. / n))
-                elif isinstance(m, nn.BatchNorm2d):
-                    m.weight.fill_(1)
-                    m.bias.zero_()
+        for m in self.main.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                nn.init.normal_(m.weight, 0, math.sqrt(2. / n))
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+        nn.init.xavier_uniform_(self.linear.weight)
+        nn.init.constant_(self.linear.bias, 0.0)
 
     def forward(self, input):
         output = self.main(input)
-        return output.view(output.size()[:2]).chunk(2, 1)
+        output = self.linear(output.view(output.size()[:2]))
+        return output.chunk(2, 1)
 
     @overrides
     def output_size(self) -> Tuple:
@@ -53,6 +58,7 @@ class ResnetEncoderCoreColorImage32x32(EncoderCore):
     """
     Resnet core for color image (RGB) of 32x32 resolution.
     """
+
     def __init__(self):
         super(ResnetEncoderCoreColorImage32x32, self).__init__()
         self.nz_channels = 16
@@ -83,14 +89,13 @@ class ResnetEncoderCoreColorImage32x32(EncoderCore):
         self.reset_parameters()
 
     def reset_parameters(self):
-        with torch.no_grad():
-            for m in self.main.modules():
-                if isinstance(m, nn.Conv2d):
-                    n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                    m.weight.normal_(0, math.sqrt(2. / n))
-                elif isinstance(m, nn.BatchNorm2d):
-                    m.weight.fill_(1)
-                    m.bias.zero_()
+        for m in self.main.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                nn.init.normal_(m.weight, 0, math.sqrt(2. / n))
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, input):
         # [batch, 2 * nz_channels, 8, 8]

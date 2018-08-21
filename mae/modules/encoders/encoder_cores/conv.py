@@ -13,6 +13,7 @@ class ConvEncoderCoreBinaryImage28x28(EncoderCore):
     Convolution Core for binary image of 28x28 resolution.
     See paper https://arxiv.org/abs/1511.06434 for details.
     """
+
     def __init__(self, nz, ndf):
         super(ConvEncoderCoreBinaryImage28x28, self).__init__()
         self.nz = nz
@@ -56,5 +57,6 @@ class ConvEncoderCoreBinaryImage28x28(EncoderCore):
     @classmethod
     def from_params(cls, params: Dict) -> "ConvEncoderCoreBinaryImage28x28":
         return ConvEncoderCoreBinaryImage28x28(**params)
+
 
 ConvEncoderCoreBinaryImage28x28.register('conv_binary_28x28')

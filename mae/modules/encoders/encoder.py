@@ -27,7 +27,7 @@ class Encoder(nn.Module):
                 Number of samples for each data instance
 
         Returns: Tensor, Object
-            Tensor: the tensor of samples from the posterior distribution with shape [batch, nsamples, nz]
+            Tensor: the tensor of samples from the posterior distribution with shape [batch, nsamples, z_shape]
             Object: parameters associated with the posterior distribution
         '''
         raise NotImplementedError
@@ -42,7 +42,7 @@ class Encoder(nn.Module):
                 the device to store the samples
 
         Returns: Tensor
-            the tensor of samples from the posterior distribution with shape [nsamples, nz]
+            the tensor of samples from the posterior distribution with shape [nsamples, z_shape]
 
         '''
         raise NotImplementedError
@@ -57,9 +57,9 @@ class Encoder(nn.Module):
                 Number of samples for each data instance
 
         Returns: Tensor1, Tensor2, Tensor3
-            Tensor1: the tensor with latent z for x shape [batch, nsamples, nz]
+            Tensor1: the tensor with latent z for x shape [batch, nsamples, z_shape]
             Tensor2: the tensor of KL for each x [batch]
-            Tensor3: the tensor of HLG measures for each pair of x with shape [batch, batch]
+            (Tensor3, Tensor4): the tensors of posterior measures for each pair of x with shape [1], [1]
 
         '''
         raise NotImplementedError
@@ -69,7 +69,7 @@ class Encoder(nn.Module):
 
         Args:
             z: Tensor
-                The tensor of z with shape [batch, nz]
+                The tensor of z with shape [batch, z_shape]
 
         Returns: Tensor
             The tensor of the log prior probabilities of z shape = [batch]
@@ -84,7 +84,7 @@ class Encoder(nn.Module):
             x: Tensor
                 The input data with shape =[batch, *]
             z: Tensor
-                The tensor of z with shape [batch, nsamples, nz]
+                The tensor of z with shape [batch, nsamples, z_shape]
             distr_params: Object
                 The parameters of the posterior distribution.
 

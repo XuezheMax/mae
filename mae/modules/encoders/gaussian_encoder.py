@@ -45,7 +45,7 @@ class GaussianEncoder(Encoder):
                 Number of samples for each data instance
 
         Returns: Tensor, Object
-            Tensor: the tensor of samples from the posterior distribution with shape [batch, nsamples, nz]
+            Tensor: the tensor of samples from the posterior distribution with shape [batch, nsamples, z_shape]
             Object: parameters associated with the posterior distribution
         '''
         # [batch, z_shape]
@@ -98,7 +98,7 @@ class GaussianEncoder(Encoder):
         batch_size = PostKL.size(0)
         cc = batch_size / (batch_size - 1.0)
         PostKL_mean = PostKL.mean() * cc
-        dd = math.sqrt((batch_size**2 - 1) / (batch_size**2 - batch_size - 1.0))
+        dd = math.sqrt((batch_size ** 2 - 1) / (batch_size ** 2 - batch_size - 1.0))
         PostKL_std = (PostKL + Eye * PostKL_mean).std() * dd
         return PostKL_mean, PostKL_std
 
@@ -115,7 +115,7 @@ class GaussianEncoder(Encoder):
         Returns: Tensor1, Tensor2, Tensor3
             Tensor1: the tensor with latent z for x shape [batch, nsamples, nz]
             Tensor2: the tensor of KL for each x [batch]
-            Tensor3: the tensor of HLG measures for each pair of x with shape [batch // 2]
+            (Tensor3, Tensor4): the tensors of posterior measures for each pair of x with shape [1], [1]
 
         '''
         # [batch, nsamples, z_shape]

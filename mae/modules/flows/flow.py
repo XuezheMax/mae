@@ -10,9 +10,8 @@ class Flow(nn.Module):
     """
     _registry = dict()
 
-    def __init__(self, nz):
+    def __init__(self):
         super(Flow, self).__init__()
-        self.nz = nz
 
     def input_size(self) -> Tuple:
         """
