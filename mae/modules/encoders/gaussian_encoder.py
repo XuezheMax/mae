@@ -1,6 +1,7 @@
 __author__ = 'max'
 
 import math
+import numpy as np
 from overrides import overrides
 from typing import Dict, Tuple
 import torch
@@ -12,19 +13,44 @@ from mae.modules.flows.flow import Flow
 
 
 class GaussianEncoder(Encoder):
-    def __init__(self, core: EncoderCore, flow: Flow = None, ngpu=1):
+    @classmethod
+    def _CHECK(cls, core: EncoderCore, prior_flow: Flow, posterior_flow: Flow):
+        def _CHECK_SIZE(s1:Tuple, s2:Tuple):
+            assert np.prod(s1) == np.prod(s2)
+
+        if prior_flow is not None:
+            try:
+                _CHECK_SIZE(core.output_size(), prior_flow.input_size())
+            except AssertionError:
+                raise ValueError('core output size %s does not match prior input size %s' % (core.output_size(), prior_flow.input_size()))
+
+        if posterior_flow is not None:
+            try:
+                _CHECK_SIZE(core.output_size(), posterior_flow.input_size())
+            except AssertionError:
+                raise ValueError('core output size %s does not match posterior input size %s' % (core.output_size(), posterior_flow.input_size()))
+
+    def __init__(self, core: EncoderCore,
+                 prior_flow: Flow = None,
+                 posterior_flow: Flow = None,
+                 ngpu=1):
         super(GaussianEncoder, self).__init__()
         self.ngpu = ngpu
+
         if ngpu > 1:
             core = nn.DataParallel(core, device_ids=list(range(ngpu)))
-            if flow is not None:
-                flow = nn.DataParallel(flow, device_ids=list(range(ngpu)))
+
         self.core = core
-        self.flow = flow
+        self.prior_flow = prior_flow
+        self.posterior_flow = posterior_flow
 
     @overrides
     def z_shape(self) -> Tuple:
-        return self.core.output_size()
+        if isinstance(self.core, EncoderCore):
+            return self.core.output_size()
+        else:
+            assert isinstance(self.core, nn.DataParallel)
+            return self.core.module.output_size()
 
     def reparameterize(self, mu, logvar, nsamples=1):
         # [batch, z_shape]
@@ -53,9 +79,9 @@ class GaussianEncoder(Encoder):
         # [batch, nsamples, z_shape]
         z_normal = self.reparameterize(mu, logvar, nsamples)
         z_size = z_normal.size()
-        if self.flow is not None:
+        if self.posterior_flow is not None:
             # [batch * nsamples, flow_shape]
-            z, logdet = self.flow(z_normal.view(z_size[0] * z_size[1], *self.flow.input_size()))
+            z, logdet = self.posterior_flow.forward(z_normal.view(z_size[0] * z_size[1], *self.posterior_flow.input_size()))
             # [batch, nsamples, z_shape]
             z = z.view(*z_size)
             logdet = logdet.view(z_size[0], z_size[1])
@@ -74,12 +100,24 @@ class GaussianEncoder(Encoder):
             nsamples: int
                 Number of samples for each data instance
 
-        Returns: Tensor
-            the tensor of samples from the posterior distribution with shape [nsamples, z_shape]
-
+        Returns: Tensor, Object
+            Tensor: the tensor of samples from the posterior distribution with shape [nsamples, z_shape]
+            Object: parameters associated with the posterior distribution
         '''
-        z_size = self.core.output_size()
-        return torch.randn(nsamples, *z_size).to(device)
+        z_size = self.z_shape()
+        # [nsamples, z_shape]
+        z_normal = torch.randn(nsamples, *z_size).to(device)
+        if self.prior_flow is not None:
+            # [nsamples, flow_shape]
+            z, logdet = self.prior_flow.forward(z_normal.view(nsamples, *self.prior_flow.input_size()))
+            # [nsamples, z_shape]
+            z = z.view(nsamples, *z_size)
+        else:
+            z = z_normal
+            logdet = z.new_zeros(nsamples)
+
+        distr_paramsters = (z_normal, logdet)
+        return z, distr_paramsters
 
     def _postKL(self, mu, logvar):
         eps = 1e-12
@@ -127,7 +165,7 @@ class GaussianEncoder(Encoder):
         mu = mu.view(z_size[0], -1)
         logvar = logvar.view(z_size[0], -1)
 
-        if self.flow is None:
+        if self.prior_flow is None and self.posterior_flow is None:
             # see Appendix B from VAE paper:
             # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
             # https://arxiv.org/abs/1312.6114
@@ -147,21 +185,31 @@ class GaussianEncoder(Encoder):
         return z, KL, PostKL
 
     @overrides
-    def log_probability_prior(self, z):
+    def log_probability_prior(self, z, distr_params=None):
         '''
 
         Args:
             z: Tensor
                 The tensor of z with shape [batch, z_shape]
+            distr_params: Object
+                The parameters of the posterior distribution.
 
         Returns: Tensor
             The tensor of the log prior probabilities of z shape = [batch]
 
         '''
+        if distr_params is not None:
+            z_normal, logdet = distr_params
+        else:
+            if self.prior_flow is None:
+                z_normal = z
+                logdet = 0.
+            else:
+                z_normal, logdet = self.prior_flow.backward(z)
         # [batch, z_shape]
-        log_probs = z.pow(2) + math.log(math.pi * 2.)
+        log_probs = z_normal.pow(2) + math.log(math.pi * 2.)
         # [batch, z_shape] --> [batch, nz] -- > [batch]
-        return log_probs.view(z.size(0), -1).sum(dim=1) * -0.5
+        return log_probs.view(z.size(0), -1).sum(dim=1) * -0.5 + logdet
 
     @overrides
     def log_probability_posterior(self, x, z, distr_params=None):
@@ -182,17 +230,19 @@ class GaussianEncoder(Encoder):
         eps = 1e-12
         z_size = z.size()
         if distr_params is None:
-            assert self.flow == None
             mu, logvar = self.core(x)
-            z_normal = z
-            logdet = z.new_zeros(z_size[0], z_size[1])
+            if self.posterior_flow is None:
+                z_normal = z
+                logdet = z.new_zeros(z_size[0], z_size[1])
+            else:
+                z_normal, logdet = self.posterior_flow.backward(z)
         else:
             mu, logvar, z_normal, logdet = distr_params
 
         # [batch, nsamples, z_shape]
         log_probs = logvar.unsqueeze(1) + (z_normal - mu.unsqueeze(1)).pow(2).div(logvar.exp().unsqueeze(1) + eps) + math.log(math.pi * 2.)
         # [batch, nsamples, nz] --> [batch, nsamples]
-        log_probs = log_probs.view(z_size[0], z_size[1], -1).sum(dim=2) * -0.5 - logdet
+        log_probs = log_probs.view(z_size[0], z_size[1], -1).sum(dim=2) * -0.5 + logdet
         return log_probs
 
     @classmethod
@@ -200,12 +250,20 @@ class GaussianEncoder(Encoder):
         core_params = params.pop('core')
         core = EncoderCore.by_name(core_params.pop('type')).from_params(core_params)
 
-        flow = None
-        flow_params = params.pop('flow', None)
-        if flow_params is not None:
-            flow = Flow.by_name(flow_params.pop('type')).from_params(flow_params)
+        posterior_flow = None
+        posterior_flow_params = params.pop('posterior_flow', None)
+        if posterior_flow_params is not None:
+            posterior_flow = Flow.by_name(posterior_flow_params.pop('type')).from_params(posterior_flow_params)
 
-        return GaussianEncoder(core, flow, **params)
+        prior_flow = None
+        prior_flow_params = params.pop('prior_flow', None)
+        if prior_flow_params is not None:
+            prior_flow = Flow.by_name(prior_flow_params.pop('type')).from_params(prior_flow_params)
+
+        return GaussianEncoder(core,
+                               prior_flow=prior_flow,
+                               posterior_flow=posterior_flow,
+                               **params)
 
 
 GaussianEncoder.register('gaussian')

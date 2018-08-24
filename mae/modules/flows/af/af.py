@@ -6,13 +6,13 @@ import torch
 from mae.modules.flows.flow import Flow
 
 
-class IAF(Flow):
+class AF(Flow):
     """
-    Inverse Auto-Regressive Flow for 1d data. input shape (batch, nz)
-    The forward path is implemented by IAF, the backward is the corresponding AF.
+    Auto-Regressive Flow for 1d data. input shape (batch, nz)
+    The backward path is implemented by IAF, the forward is the corresponding AF.
     """
     def __init__(self, input_size):
-        super(IAF, self).__init__()
+        super(AF, self).__init__()
         self._input_size = input_size
 
     def input_size(self) -> Tuple:
@@ -61,13 +61,13 @@ class IAF(Flow):
         raise NotImplementedError
 
 
-class IAF2d(Flow):
+class AF2d(Flow):
     """
-    Inverse Auto-Regressive Flow for 2d data. input shape (batch, channels, H, W)
-    The forward path is implemented by IAF, the backward is the corresponding AF.
+    Auto-Regressive Flow for 2d data. input shape (batch, channels, H, W)
+    The backward path is implemented by IAF, the forward is the corresponding AF.
     """
     def __init__(self, channels, H, W):
-        super(IAF2d, self).__init__()
+        super(AF2d, self).__init__()
         self._input_shape = (channels, H, W)
 
     def input_size(self) -> Tuple:
