@@ -10,37 +10,46 @@ from mae.modules.flows.af.af import AF
 
 
 class AFMADEBlock(nn.Module):
-    def __init__(self, input_size, num_hiddens, hidden_size, order, bias=True):
+    def __init__(self, input_size, num_hiddens, hidden_size, order, bias=True, var=False):
         super(AFMADEBlock, self).__init__()
         self.mu = MADE(input_size, num_hiddens, hidden_size, order, bias=bias)
-        self.logvar = MADE(input_size, num_hiddens, hidden_size, order, bias=bias)
+        if var:
+            self.logvar = MADE(input_size, num_hiddens, hidden_size, order, bias=bias)
+        else:
+            self.logvar = None
         assert input_size > 0, 'input size (%s) should be positive' % input_size
         self._input_size = input_size
 
     def forward(self, x):
         eps = 1e-12
         y = x.new_zeros(x.size())
+        logstd = x.new_zeros(x.size())
         for _ in range(self._input_size):
             mu = self.mu(y)
-            logstd = self.logvar(y) * 0.5
+            if self.logvar:
+                logstd = self.logvar(y) * 0.5
             y = (x - mu).div(logstd.exp() + eps)
         return y, logstd.sum(dim=1)
 
     def backward(self, y):
         # [batch, nz]
         mu = self.mu(y)
-        logstd = self.logvar(y) * 0.5
+        if self.logvar:
+            logstd = self.logvar(y) * 0.5
+        else:
+            logstd = mu.new_zeros(mu.size())
         x = mu + y * logstd.exp()
         return x, logstd.sum(dim=1)
 
 
 class AFMADEDualBlock(nn.Module):
-    def __init__(self, input_size, num_hiddens, hidden_size, bias=True):
+    def __init__(self, input_size, num_hiddens, hidden_size, bias=True, var=False):
         super(AFMADEDualBlock, self).__init__()
-        self.fwd = AFMADEBlock(input_size, num_hiddens, hidden_size, 'A', bias=bias)
-        self.bwd = AFMADEBlock(input_size, num_hiddens, hidden_size, 'B', bias=bias)
+        self.fwd = AFMADEBlock(input_size, num_hiddens, hidden_size, 'A', bias=bias, var=var)
+        self.bwd = AFMADEBlock(input_size, num_hiddens, hidden_size, 'B', bias=bias, var=var)
 
     def forward(self, x):
+        # forward
         x, logdet_fwd = self.fwd.forward(x)
         y, logdet_bwd = self.bwd.forward(x)
         return y, logdet_fwd + logdet_bwd
@@ -55,7 +64,7 @@ class AFMADEDualBlock(nn.Module):
 
 
 class AFMADE(AF):
-    def __init__(self, input_size, num_blocks, num_hiddens=1, hidden_size=None, bias=True):
+    def __init__(self, input_size, num_blocks, num_hiddens=1, hidden_size=None, bias=True, var=False):
         super(AFMADE, self).__init__(input_size)
         self.num_blocks = num_blocks
         self.num_hiddens = num_hiddens
@@ -63,7 +72,7 @@ class AFMADE(AF):
         self.hidden_size = hidden_size
         self.blocks = []
         for i in range(num_blocks):
-            block = AFMADEDualBlock(self.nz, num_hiddens, hidden_size, bias=bias)
+            block = AFMADEDualBlock(self.nz, num_hiddens, hidden_size, bias=bias, var=var)
             self.blocks.append(block)
         assert num_blocks == len(self.blocks)
         self.blocks = nn.ModuleList(self.blocks)

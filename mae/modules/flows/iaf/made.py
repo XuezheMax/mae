@@ -10,35 +10,43 @@ from mae.modules.flows.iaf.iaf import IAF
 
 
 class IAFMADEBlock(nn.Module):
-    def __init__(self, input_size, num_hiddens, hidden_size, order, bias=True):
+    def __init__(self, input_size, num_hiddens, hidden_size, order, bias=True, var=False):
         super(IAFMADEBlock, self).__init__()
         self.mu = MADE(input_size, num_hiddens, hidden_size, order, bias=bias)
-        self.logvar = MADE(input_size, num_hiddens, hidden_size, order, bias=bias)
+        if var:
+            self.logvar = MADE(input_size, num_hiddens, hidden_size, order, bias=bias)
+        else:
+            self.logvar = None
         assert input_size > 0, 'input size (%s) should be positive' % input_size
         self._input_size = input_size
 
     def forward(self, x):
         # [batch, nz]
         mu = self.mu(x)
-        logstd = self.logvar(x) * 0.5
+        if self.logvar:
+            logstd = self.logvar(x) * 0.5
+        else:
+            logstd = mu.new_zeros(mu.size())
         y = mu + x * logstd.exp()
         return y, logstd.sum(dim=1) * -1.0
 
     def backward(self, y):
         eps = 1e-12
         x = y.new_zeros(y.size())
+        logstd = y.new_zeros(y.size())
         for _ in range(self._input_size):
             mu = self.mu(x)
-            logstd = self.logvar(x) * 0.5
+            if self.logvar:
+                logstd = self.logvar(x) * 0.5
             x = (y - mu).div(logstd.exp() + eps)
         return x, logstd.sum(dim=1) * -1.0
 
 
 class IAFMADEDualBlock(nn.Module):
-    def __init__(self, input_size, num_hiddens, hidden_size, bias=True):
+    def __init__(self, input_size, num_hiddens, hidden_size, bias=True, var=False):
         super(IAFMADEDualBlock, self).__init__()
-        self.fwd = IAFMADEBlock(input_size, num_hiddens, hidden_size, 'A', bias=bias)
-        self.bwd = IAFMADEBlock(input_size, num_hiddens, hidden_size, 'B', bias=bias)
+        self.fwd = IAFMADEBlock(input_size, num_hiddens, hidden_size, 'A', bias=bias, var=var)
+        self.bwd = IAFMADEBlock(input_size, num_hiddens, hidden_size, 'B', bias=bias, var=var)
 
     def forward(self, x):
         # forward
@@ -56,7 +64,7 @@ class IAFMADEDualBlock(nn.Module):
 
 
 class IAFMADE(IAF):
-    def __init__(self, input_size, num_blocks, num_hiddens=1, hidden_size=None, bias=True):
+    def __init__(self, input_size, num_blocks, num_hiddens=1, hidden_size=None, bias=True, var=False):
         super(IAFMADE, self).__init__(input_size)
         self.num_blocks = num_blocks
         self.num_hiddens = num_hiddens
@@ -64,7 +72,7 @@ class IAFMADE(IAF):
         self.hidden_size = hidden_size
         self.blocks = []
         for i in range(num_blocks):
-            block = IAFMADEDualBlock(self.nz, num_hiddens, hidden_size, bias=bias)
+            block = IAFMADEDualBlock(self.nz, num_hiddens, hidden_size, bias=bias, var=var)
             self.blocks.append(block)
         assert num_blocks == len(self.blocks)
         self.blocks = nn.ModuleList(self.blocks)

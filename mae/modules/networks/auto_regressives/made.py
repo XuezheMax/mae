@@ -30,16 +30,24 @@ class MADE(nn.Module):
         self.input_layer = MaskedLinear(input_size, hidden_size, ('input-hidden', order), total_units, bias=bias)
         self.direct_connect = MaskedLinear(input_size, input_size, ('input-output', order), total_units, bias=False)
 
+        # weight normalization
+        self.input_layer = nn.utils.weight_norm(self.input_layer)
+        self.direct_connect = nn.utils.weight_norm(self.direct_connect)
+
         max_units = self.input_layer.max_units
         self.hidden_layers = []
         for hid in range(1, num_hiddens):
             hidden_layer = MaskedLinear(hidden_size, hidden_size, ('hidden-hidden', order), total_units, max_units=max_units, bias=bias)
             max_units = hidden_layer.max_units
+            # weight normalization
+            hidden_layer = nn.utils.weight_norm(hidden_layer)
             self.hidden_layers.append(hidden_layer)
             self.add_module('hidden%d' % hid, hidden_layer)
         assert self.num_hiddens == len(self.hidden_layers) + 1
 
         self.output_layer = MaskedLinear(hidden_size, input_size, ('hidden-output', order), total_units, max_units=max_units, bias=bias)
+        # weight normalization
+        self.output_layer = nn.utils.weight_norm(self.output_layer)
 
     def forward(self, x):
         output = self.activation(self.input_layer(x))

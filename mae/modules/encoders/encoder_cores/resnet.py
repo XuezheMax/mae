@@ -27,7 +27,7 @@ class ResnetEncoderCoreBinaryImage28x28(EncoderCore):
             nn.BatchNorm2d(hidden_units),
             nn.ELU(),
         )
-        self.linear = nn.Linear(512, 2 * nz)
+        self.linear = nn.Linear(hidden_units, 2 * nz, bias=False)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -39,7 +39,6 @@ class ResnetEncoderCoreBinaryImage28x28(EncoderCore):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
         nn.init.xavier_uniform_(self.linear.weight)
-        nn.init.constant_(self.linear.bias, 0.0)
 
     def forward(self, input):
         output = self.main(input)

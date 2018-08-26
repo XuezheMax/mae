@@ -4,6 +4,7 @@ import math
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class MaskedLinear(nn.Linear):
@@ -22,7 +23,6 @@ class MaskedLinear(nn.Linear):
         layer_type, order = mask_type
         assert layer_type in {'input-hidden', 'hidden-hidden', 'hidden-output', 'input-output'}
         assert order in {'A', 'B'}
-        self.register_buffer('mask', self.weight.data.clone())
 
         # override the max_units for input layer
         if layer_type.startswith('input'):
@@ -51,17 +51,16 @@ class MaskedLinear(nn.Linear):
             reverse_mask = reverse_mask[:, ::-1]
             mask = np.copy(reverse_mask)
 
-        self.mask.copy_(torch.from_numpy(mask).float())
+        self.register_buffer('mask', torch.from_numpy(mask).float())
         self.reset_parameters()
 
     def reset_parameters(self):
-        nn.init.xavier_uniform_(self.weight, gain=0.1)
+        nn.init.xavier_uniform(self.weight, gain=0.1)
         if self.bias is not None:
             nn.init.constant_(self.bias, 0.)
 
     def forward(self, x):
-        self.weight.data.mul_(self.mask)
-        return super(MaskedLinear, self).forward(x)
+        return F.linear(input, self.weight * self.mask, self.bias)
 
 
 class MaskedConv2d(nn.Conv2d):
@@ -71,9 +70,8 @@ class MaskedConv2d(nn.Conv2d):
     def __init__(self, mask_type, masked_channels, *args, **kwargs):
         super(MaskedConv2d, self).__init__(*args, **kwargs)
         assert mask_type in {'A', 'B'}
-        self.register_buffer('mask', self.weight.data.clone())
+        self.register_buffer('mask', torch.ones(self.weight.size()))
         _, _, kH, kW = self.weight.size()
-        self.mask.fill_(1)
         self.mask[:, :masked_channels, kH // 2, kW // 2 + (mask_type == 'B'):] = 0
         self.mask[:, :masked_channels, kH // 2 + 1:] = 0
 
@@ -84,5 +82,5 @@ class MaskedConv2d(nn.Conv2d):
             nn.init.constant_(self.bias, 0)
 
     def forward(self, x):
-        self.weight.data.mul_(self.mask)
-        return super(MaskedConv2d, self).forward(x)
+        return F.conv2d(input, self.weight * self.mask, self.bias, self.stride,
+                        self.padding, self.dilation, self.groups)
