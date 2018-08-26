@@ -192,7 +192,7 @@ class GaussianEncoder(Encoder):
             z: Tensor
                 The tensor of z with shape [batch, z_shape]
             distr_params: Object
-                The parameters of the posterior distribution.
+                The parameters of the prior distribution.
 
         Returns: Tensor
             The tensor of the log prior probabilities of z shape = [batch]

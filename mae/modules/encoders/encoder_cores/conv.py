@@ -38,13 +38,12 @@ class ConvEncoderCoreBinaryImage28x28(EncoderCore):
         self.reset_parameters()
 
     def reset_parameters(self):
-        with torch.no_grad():
-            for m in self.main.modules():
-                if isinstance(m, nn.Conv2d):
-                    m.weight.normal_(0.0, 0.02)
-                elif isinstance(m, nn.BatchNorm2d):
-                    m.weight.normal_(1.0, 0.02)
-                    m.bias.zero_()
+        for m in self.main.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.normal_(m.weight, 0., 0.02)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.normal_(m.weight, 1.0, 0.02)
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, input):
         output = self.main(input)
