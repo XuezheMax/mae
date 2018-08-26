@@ -23,7 +23,7 @@ class AFMADEBlock(nn.Module):
         for _ in range(self._input_size):
             mu = self.mu(y)
             logstd = self.logvar(y) * 0.5
-            y = (x - mu).div(logstd + eps)
+            y = (x - mu).div(logstd.exp() + eps)
         return y, logstd.sum(dim=1)
 
     def backward(self, y):
