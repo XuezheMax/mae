@@ -30,7 +30,7 @@ class IAFMADEBlock(nn.Module):
         for _ in range(self._input_size):
             mu = self.mu(x)
             logstd = self.logvar(x) * 0.5
-            x = (y - mu).div(logstd + eps)
+            x = (y - mu).div(logstd.exp() + eps)
         return x, logstd.sum(dim=1) * -1.0
 
 
