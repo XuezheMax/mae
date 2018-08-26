@@ -20,10 +20,12 @@ class ResnetEncoderCoreBinaryImage28x28(EncoderCore):
         super(ResnetEncoderCoreBinaryImage28x28, self).__init__()
         self.nz = nz
         self.nc = 1
+        hidden_units = 512
         self.main = nn.Sequential(
             ResNet(self.nc, [32, 64, 64], [2, 2, 2]),
-            nn.Conv2d(64, 512, 4, 1, 0, bias=False),
-            nn.Tanh(),
+            nn.Conv2d(64, hidden_units, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(hidden_units),
+            nn.ELU(),
         )
         self.linear = nn.Linear(512, 2 * nz)
         self.reset_parameters()
