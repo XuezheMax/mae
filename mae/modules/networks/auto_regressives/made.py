@@ -1,6 +1,5 @@
 __author__ = 'max'
 
-
 import torch.nn as nn
 from mae.modules.networks.masked import MaskedLinear
 
@@ -9,6 +8,7 @@ class MADE(nn.Module):
     """
     The MADE model. See https://arxiv.org/abs/1502.03509 for details.
     """
+
     def __init__(self, input_size, num_hiddens, hidden_size, order, bias=True):
         '''
 
@@ -23,7 +23,7 @@ class MADE(nn.Module):
         self.input_size = input_size
         self.num_hiddens = num_hiddens
         self.hidden_size = hidden_size
-        self.activation = nn.ReLU() # TODO other activation functions
+        self.activation = nn.ReLU()  # TODO other activation functions
 
         assert num_hiddens > 0
         total_units = input_size - 1

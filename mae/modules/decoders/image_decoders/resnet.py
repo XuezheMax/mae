@@ -10,8 +10,8 @@ from mae.modules.decoders.image_decoders.binary_image_decoder import BinaryImage
 
 class ResnetDecoderBinaryImage28x28(BinaryImageDecoder):
     """
-    Convolution Deocder for binary image of 28x28 resolution.
-    See paper https://arxiv.org/abs/1511.06434 for details.
+    Resnet Deocder for binary image of 28x28 resolution.
+    See paper https://arxiv.org/abs/1611.02731 for details
     """
 
     def __init__(self, nz, ngpu=1):
