@@ -128,15 +128,6 @@ class GaussianEncoder(Encoder):
         B = (mu.unsqueeze(1) - mu.unsqueeze(0)).pow(2).div(var.unsqueeze(0) + eps)
         # C [batch, batch, nz]
         C = logvar.unsqueeze(1) - logvar.unsqueeze(0)
-        
-        eps = 1e-12
-        var = logvar.exp()
-        # A [batch, batch. nz]
-        A = var.unsqueeze(1).div(var.unsqueeze(0) + eps)
-        # B [batch, batch, nz]
-        B = (mu.unsqueeze(1) - mu.unsqueeze(0)).pow(2).div(var.unsqueeze(0) + eps)
-        # C [batch, batch, nz]
-        C = logvar.unsqueeze(1) - logvar.unsqueeze(0)
 
         # [batch, batch, nz]
         Eye = torch.eye(mu.size(0), device=mu.device)
