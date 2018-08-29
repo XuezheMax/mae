@@ -128,16 +128,29 @@ class GaussianEncoder(Encoder):
         B = (mu.unsqueeze(1) - mu.unsqueeze(0)).pow(2).div(var.unsqueeze(0) + eps)
         # C [batch, batch, nz]
         C = logvar.unsqueeze(1) - logvar.unsqueeze(0)
+        
+        eps = 1e-12
+        var = logvar.exp()
+        # A [batch, batch. nz]
+        A = var.unsqueeze(1).div(var.unsqueeze(0) + eps)
+        # B [batch, batch, nz]
+        B = (mu.unsqueeze(1) - mu.unsqueeze(0)).pow(2).div(var.unsqueeze(0) + eps)
+        # C [batch, batch, nz]
+        C = logvar.unsqueeze(1) - logvar.unsqueeze(0)
 
-        # [batch, batch]
+        # [batch, batch, nz]
         Eye = torch.eye(mu.size(0), device=mu.device)
-        PostKL = (A + B - C - 1).sum(dim=2) * 0.5 * (1.0 - Eye)
+        PostKL = (A + B - C - 1) * 0.5
+        PostKL = PostKL * (1.0 - Eye).unsqueeze(2)
 
         batch_size = PostKL.size(0)
         cc = batch_size / (batch_size - 1.0)
-        PostKL_mean = PostKL.mean() * cc
-        dd = math.sqrt((batch_size ** 2 - 1) / (batch_size ** 2 - batch_size - 1.0))
-        PostKL_std = (PostKL + Eye * PostKL_mean).std() * dd
+        # [batch, batch, nz] --> [nz]
+        PostKL_mean = PostKL.view(batch_size**2, -1).mean(dim=0) * cc
+
+        dd = math.sqrt((batch_size**2 - 1) / (batch_size**2 - batch_size - 1.0))
+        # [batch, batch, nz] --> [nz]
+        PostKL_std = (PostKL + Eye.unsqueeze(2) * PostKL_mean).view(batch_size**2, -1).std(dim=0) * dd
         return PostKL_mean, PostKL_std
 
     @overrides
