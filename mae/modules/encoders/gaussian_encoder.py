@@ -121,27 +121,30 @@ class GaussianEncoder(Encoder):
 
     def _postKL(self, mu, logvar):
         eps = 1e-12
+        z_shape = self.z_shape()
+        batch_size = mu.size(0)
+        # [batch, z_shape]
         var = logvar.exp()
-        # A [batch, batch. nz]
+        # A [batch, batch. z_shape]
         A = var.unsqueeze(1).div(var.unsqueeze(0) + eps)
-        # B [batch, batch, nz]
+        # B [batch, batch, z_shape]
         B = (mu.unsqueeze(1) - mu.unsqueeze(0)).pow(2).div(var.unsqueeze(0) + eps)
-        # C [batch, batch, nz]
+        # C [batch, batch, z_shape]
         C = logvar.unsqueeze(1) - logvar.unsqueeze(0)
 
-        # [batch, batch, nz]
-        Eye = torch.eye(mu.size(0), device=mu.device)
+        # [batch, batch]
+        Eye = torch.eye(batch_size, device=mu.device)
+        # [batch, batch, z_shape]
         PostKL = (A + B - C - 1) * 0.5
-        PostKL = PostKL * (1.0 - Eye).unsqueeze(2)
+        PostKL = PostKL * (1.0 - Eye.view(Eye.size() + (1, ) * len(z_shape)))
 
-        batch_size = PostKL.size(0)
         cc = batch_size / (batch_size - 1.0)
-        # [batch, batch, nz] --> [nz]
-        PostKL_mean = PostKL.view(batch_size**2, -1).mean(dim=0) * cc
+        # [batch, batch, z_shape] --> [z_shape]
+        PostKL_mean = PostKL.view(batch_size**2, *z_shape).mean(dim=0) * cc
 
         dd = math.sqrt((batch_size**2 - 1) / (batch_size**2 - batch_size - 1.0))
-        # [batch, batch, nz] --> [nz]
-        PostKL_std = (PostKL + Eye.unsqueeze(2) * PostKL_mean).view(batch_size**2, -1).std(dim=0) * dd
+        # [batch, batch, z_shape] --> [batch, batch, -1] --> [batch, batch] --> [1]
+        PostKL_std = (PostKL.view(Eye.size() + (-1)).sum(dim=2) + Eye * PostKL_mean.sum()).std() * dd
         return PostKL_mean, PostKL_std
 
     @overrides
@@ -154,10 +157,10 @@ class GaussianEncoder(Encoder):
             nsample: int
                 Number of samples for each data instance
 
-        Returns: Tensor1, Tensor2, Tensor3
-            Tensor1: the tensor with latent z for x shape [batch, nsamples, nz]
+        Returns: Tensor1, Tensor2, (Tensor3, Tensor4)
+            Tensor1: the tensor with latent z for x shape [batch, nsamples, z_shape]
             Tensor2: the tensor of KL for each x [batch]
-            (Tensor3, Tensor4): the tensors of posterior measures for each pair of x with shape [1], [1]
+            (Tensor3, Tensor4): the tensors of posterior measures for each pair of x with shape [z_shape], [1]
 
         '''
         # [batch, nsamples, z_shape]

@@ -59,7 +59,7 @@ class Encoder(nn.Module):
         Returns: Tensor1, Tensor2, Tensor3
             Tensor1: the tensor with latent z for x shape [batch, nsamples, z_shape]
             Tensor2: the tensor of KL for each x [batch]
-            (Tensor3, Tensor4): the tensors of posterior measures for each pair of x with shape [1], [1]
+            (Tensor3, Tensor4): the tensors of posterior measures for each pair of x with shape [z_shape], [1]
 
         '''
         raise NotImplementedError

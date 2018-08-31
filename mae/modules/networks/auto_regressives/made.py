@@ -1,7 +1,7 @@
 __author__ = 'max'
 
 import torch.nn as nn
-from mae.modules.networks.masked import MaskedLinear
+from mae.modules.networks.masked import MaskedLinear, MaskedLinearWeightNorm
 
 
 class MADE(nn.Module):
@@ -9,7 +9,7 @@ class MADE(nn.Module):
     The MADE model. See https://arxiv.org/abs/1502.03509 for details.
     """
 
-    def __init__(self, input_size, num_hiddens, hidden_size, order, bias=True):
+    def __init__(self, input_size, num_hiddens, hidden_size, order, bias=True, weight_norm=True):
         '''
 
         Args:
@@ -18,6 +18,7 @@ class MADE(nn.Module):
             hidden_size: the number of units in each hidden layer
             order: mask type (should be in {'A', 'B'})
             bias: using bias
+            weight_norm: using weight normalization
         '''
         super(MADE, self).__init__()
         self.input_size = input_size
@@ -27,27 +28,24 @@ class MADE(nn.Module):
 
         assert num_hiddens > 0
         total_units = input_size - 1
-        self.input_layer = MaskedLinear(input_size, hidden_size, ('input-hidden', order), total_units, bias=bias)
-        self.direct_connect = MaskedLinear(input_size, input_size, ('input-output', order), total_units, bias=False)
+        if weight_norm:
+            MASKED = MaskedLinearWeightNorm
+        else:
+            MASKED = MaskedLinear
 
-        # weight normalization
-        self.input_layer = nn.utils.weight_norm(self.input_layer)
-        self.direct_connect = nn.utils.weight_norm(self.direct_connect)
+        self.input_layer = MASKED(input_size, hidden_size, ('input-hidden', order), total_units, bias=bias)
+        self.direct_connect = MASKED(input_size, input_size, ('input-output', order), total_units, bias=False)
 
         max_units = self.input_layer.max_units
         self.hidden_layers = []
         for hid in range(1, num_hiddens):
-            hidden_layer = MaskedLinear(hidden_size, hidden_size, ('hidden-hidden', order), total_units, max_units=max_units, bias=bias)
+            hidden_layer = MASKED(hidden_size, hidden_size, ('hidden-hidden', order), total_units, max_units=max_units, bias=bias)
             max_units = hidden_layer.max_units
-            # weight normalization
-            hidden_layer = nn.utils.weight_norm(hidden_layer)
             self.hidden_layers.append(hidden_layer)
-            self.add_module('hidden%d' % hid, hidden_layer)
+        self.hidden_layers = nn.ModuleList(self.hidden_layers)
         assert self.num_hiddens == len(self.hidden_layers) + 1
 
-        self.output_layer = MaskedLinear(hidden_size, input_size, ('hidden-output', order), total_units, max_units=max_units, bias=bias)
-        # weight normalization
-        self.output_layer = nn.utils.weight_norm(self.output_layer)
+        self.output_layer = MASKED(hidden_size, input_size, ('hidden-output', order), total_units, max_units=max_units, bias=bias)
 
     def forward(self, x):
         output = self.activation(self.input_layer(x))
