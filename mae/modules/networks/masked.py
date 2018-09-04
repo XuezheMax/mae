@@ -13,7 +13,7 @@ from mae.modules.networks.utils import norm
 
 class MaskedLinear(nn.Linear):
     def __init__(self, in_features, out_features, mask_type, total_units, max_units=None, bias=True):
-        '''
+        """
         Linear module with mask for auto-regressive models.
         Args:
             in_features: number of units in the inputs
@@ -22,7 +22,7 @@ class MaskedLinear(nn.Linear):
             mask_type: type of the masked linear.
             total_units: the total number of units to assign.
             bias: using bias vector.
-        '''
+        """
         super(MaskedLinear, self).__init__(in_features, out_features, bias=bias)
         layer_type, order = mask_type
         assert layer_type in {'input-hidden', 'hidden-hidden', 'hidden-output', 'input-output'}
@@ -58,6 +58,7 @@ class MaskedLinear(nn.Linear):
         self.register_buffer('mask', torch.from_numpy(mask).float())
         self.reset_parameters()
 
+    @overrides
     def reset_parameters(self):
         nn.init.xavier_uniform(self.weight, gain=0.1)
         if self.bias is not None:
@@ -76,8 +77,7 @@ class MaskedLinear(nn.Linear):
 
 class MaskedLinearWeightNorm(nn.Module):
     def __init__(self, in_features, out_features, mask_type, total_units, max_units=None, bias=True):
-        '''
-
+        """
         Args:
             in_features: number of units in the inputs
             out_features: number of units in the outputs.
@@ -85,7 +85,7 @@ class MaskedLinearWeightNorm(nn.Module):
             mask_type: type of the masked linear.
             total_units: the total number of units to assign.
             bias: using bias vector.
-        '''
+        """
         super(MaskedLinearWeightNorm, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -150,6 +150,7 @@ class MaskedLinearWeightNorm(nn.Module):
         weight = self.weight_v * (self.weight_g.exp() / _norm)
         return F.linear(input, weight, self.bias)
 
+    @overrides
     def extra_repr(self):
         return 'in_features={}, out_features={}, bias={}, type={}, order={}'.format(
             self.in_features, self.out_features, self.bias is not None,
@@ -161,6 +162,7 @@ class MaskedConv2d(nn.Conv2d):
     """
     Conv2d with mask for pixelcnn.
     """
+
     def __init__(self, mask_type, masked_channels, *args, **kwargs):
         super(MaskedConv2d, self).__init__(*args, **kwargs)
         assert mask_type in {'A', 'B'}
@@ -168,7 +170,9 @@ class MaskedConv2d(nn.Conv2d):
         _, _, kH, kW = self.weight.size()
         self.mask[:, :masked_channels, kH // 2, kW // 2 + (mask_type == 'B'):] = 0
         self.mask[:, :masked_channels, kH // 2 + 1:] = 0
+        self.reset_parameters()
 
+    @overrides
     def reset_parameters(self):
         n = self.kernel_size[0] * self.kernel_size[1] * self.out_channels
         nn.init.normal_(self.weight, 0, math.sqrt(2. / n))
@@ -178,3 +182,85 @@ class MaskedConv2d(nn.Conv2d):
     def forward(self, x):
         return F.conv2d(input, self.weight * self.mask, self.bias, self.stride,
                         self.padding, self.dilation, self.groups)
+
+
+class DownShiftConv2d(nn.Conv2d):
+    """
+    Conv2d with down shift operation.
+    """
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, bias=True):
+        super(DownShiftConv2d, self).__init__(in_channels, out_channels, kernel_size, stride=stride, bias=bias)
+        self.shift_padding = ((kernel_size[1] - 1) // 2, (kernel_size[1] - 1) // 2, kernel_size[0] - 1, 0)
+        self.reset_parameters()
+
+    @overrides
+    def reset_parameters(self):
+        n = self.kernel_size[0] * self.kernel_size[1] * self.out_channels
+        nn.init.normal_(self.weight, 0, math.sqrt(2. / n))
+        if self.bias is not None:
+            nn.init.constant_(self.bias, 0)
+
+    def forward(self, input):
+        input = F.pad(input, self.shift_padding)
+        return F.conv2d(input, self.weight, self.bias, self.stride,
+                        self.padding, self.dilation, self.groups)
+
+
+class DownRightShiftConv2d(DownShiftConv2d):
+    """
+    Conv2d with dwon right shift operation.
+    """
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, bias=True):
+        super(DownRightShiftConv2d, self).__init__(in_channels, out_channels, kernel_size, stride=stride, bias=bias)
+        self.shift_padding = (kernel_size[1] - 1, 0, kernel_size[0] - 1, 0)
+        self.reset_parameters()
+
+
+class DownShiftConvTranspose2d(nn.ConvTranspose2d):
+    """
+    ConvTranspose2d with down shift operation.
+    """
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=(1, 1), bias=True):
+        assert len(stride) == 2
+        output_padding = (stride[0] - 1, stride[1] - 1)
+        super(DownShiftConvTranspose2d, self).__init__(in_channels, out_channels, kernel_size, stride=stride, output_padding=output_padding, bias=bias)
+        self.reset_parameters()
+
+    @overrides
+    def reset_parameters(self):
+        n = self.kernel_size[0] * self.kernel_size[1] * self.in_channels
+        nn.init.normal_(self.weight, 0, math.sqrt(2. / n))
+        if self.bias is not None:
+            nn.init.constant_(self.bias, 0)
+
+    def forward(self, input):
+        output_padding = self._output_padding(input, output_size=None)
+        output = F.conv_transpose2d(
+            input, self.weight, self.bias, self.stride, self.padding,
+            output_padding, self.groups, self.dilation)
+        size = output.size()
+        H_padding = self.kernel_size[0] - 1
+        W_padding = (self.kernel_size[1] - 1) // 2
+        return output[:, :, :(size[2] - H_padding), W_padding:(size[3] - W_padding)]
+
+
+class DownRightShiftConvTranspose2d(DownShiftConvTranspose2d):
+    """
+    ConvTranspose2d with down shift operation.
+    """
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=(1, 1), bias=True):
+        super(DownRightShiftConvTranspose2d, self).__init__(in_channels, out_channels, kernel_size, stride=stride, bias=bias)
+
+    def forward(self, input):
+        output_padding = self._output_padding(input, output_size=None)
+        output = F.conv_transpose2d(
+            input, self.weight, self.bias, self.stride, self.padding,
+            output_padding, self.groups, self.dilation)
+        size = output.size()
+        H_padding = self.kernel_size[0] - 1
+        W_padding = self.kernel_size[1] - 1
+        return output[:, :, :(size[2] - H_padding),:(size[3] - W_padding)]
