@@ -15,7 +15,7 @@ from mae.modules.flows.flow import Flow
 class GaussianEncoder(Encoder):
     @classmethod
     def _CHECK(cls, core: EncoderCore, prior_flow: Flow, posterior_flow: Flow):
-        def _CHECK_SIZE(s1:Tuple, s2:Tuple):
+        def _CHECK_SIZE(s1: Tuple, s2: Tuple):
             assert np.prod(s1) == np.prod(s2)
 
         if prior_flow is not None:
@@ -62,7 +62,7 @@ class GaussianEncoder(Encoder):
 
     @overrides
     def sample_from_posterior(self, x, nsamples=1):
-        '''
+        """
 
         Args:
             x: Tensor
@@ -73,7 +73,7 @@ class GaussianEncoder(Encoder):
         Returns: Tensor, Object
             Tensor: the tensor of samples from the posterior distribution with shape [batch, nsamples, z_shape]
             Object: parameters associated with the posterior distribution
-        '''
+        """
         # [batch, z_shape]
         mu, logvar = self.core(x)
         # [batch, nsamples, z_shape]
@@ -94,16 +94,19 @@ class GaussianEncoder(Encoder):
 
     @overrides
     def sample_from_proir(self, nsamples=1, device=torch.device('cpu')):
-        '''
+        """
 
         Args:
             nsamples: int
                 Number of samples for each data instance
+            device: torch.device
+                The device to store the samples
 
         Returns: Tensor, Object
             Tensor: the tensor of samples from the posterior distribution with shape [nsamples, z_shape]
             Object: parameters associated with the posterior distribution
-        '''
+        """
+
         z_size = self.z_shape()
         # [nsamples, z_shape]
         z_normal = torch.randn(nsamples, *z_size).to(device)
@@ -136,20 +139,20 @@ class GaussianEncoder(Encoder):
         Eye = torch.eye(batch_size, device=mu.device)
         # [batch, batch, z_shape]
         PostKL = (A + B - C - 1) * 0.5
-        PostKL = PostKL * (1.0 - Eye.view(Eye.size() + (1, ) * len(z_shape)))
+        PostKL = PostKL * (1.0 - Eye.view(Eye.size() + (1,) * len(z_shape)))
 
         cc = batch_size / (batch_size - 1.0)
         # [batch, batch, z_shape] --> [z_shape]
-        PostKL_mean = PostKL.view(batch_size**2, *z_shape).mean(dim=0) * cc
+        PostKL_mean = PostKL.view(batch_size ** 2, *z_shape).mean(dim=0) * cc
 
-        dd = math.sqrt((batch_size**2 - 1) / (batch_size**2 - batch_size - 1.0))
+        dd = math.sqrt((batch_size ** 2 - 1) / (batch_size ** 2 - batch_size - 1.0))
         # [batch, batch, z_shape] --> [batch, batch, -1] --> [batch, batch] --> [1]
         PostKL_std = (PostKL.view(Eye.size() + (-1)).sum(dim=2) + Eye * PostKL_mean.sum()).std() * dd
         return PostKL_mean, PostKL_std
 
     @overrides
     def encode(self, x, nsamples):
-        '''
+        """
 
         Args:
             x: Tensor
@@ -162,7 +165,7 @@ class GaussianEncoder(Encoder):
             Tensor2: the tensor of KL for each x [batch]
             (Tensor3, Tensor4): the tensors of posterior measures for each pair of x with shape [z_shape], [1]
 
-        '''
+        """
         # [batch, nsamples, z_shape]
         z, distr_params = self.sample_from_posterior(x, nsamples=nsamples)
         mu, logvar, _, _ = distr_params

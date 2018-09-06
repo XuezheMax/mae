@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import Parameter
 
-from mae.modules.networks.utils import norm
+from mae.modules.utils import norm
 
 
 class MaskedLinear(nn.Linear):
