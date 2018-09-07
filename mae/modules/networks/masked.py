@@ -64,7 +64,7 @@ class MaskedLinear(nn.Linear):
         if self.bias is not None:
             nn.init.constant_(self.bias, 0.)
 
-    def forward(self, x):
+    def forward(self, input):
         return F.linear(input, self.weight * self.mask, self.bias)
 
     @overrides
@@ -179,7 +179,7 @@ class MaskedConv2d(nn.Conv2d):
         if self.bias is not None:
             nn.init.constant_(self.bias, 0)
 
-    def forward(self, x):
+    def forward(self, input):
         return F.conv2d(input, self.weight * self.mask, self.bias, self.stride,
                         self.padding, self.dilation, self.groups)
 

@@ -142,7 +142,7 @@ class PixelCNNDecoderBinaryImage28x28(BinaryImageDecoder):
         # [batch, nsamples, nz] --> [batch*nsamples, nz] --> [batch*nsample, fm, H, W]
         z = self.z_transform(z.view(batch_size * nsampels, *z_size[2:]))
         # [batch*nsample, fm, H, W] --> [batch, nsample, fm, H, W]
-        z = z.view(batch_size, nsampels, *z.size()[2:])
+        z = z.view(batch_size, nsampels, *z.size()[1:])
 
         # [batch, nc, H, W] --> [batch, 1, nc, H, W] --> [batch, nsample, nc, H, W]
         img = x.unsqueeze(1).expand(batch_size, nsampels, *x.size()[1:])
