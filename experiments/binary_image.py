@@ -178,7 +178,7 @@ def eval(eval_data):
         binarized_data = torch.from_numpy(binarized_data).to(device).float()
 
         batch_size = len(binarized_data)
-        recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binarized_data, nsamples=test_k, eta=eta, gamma=gamma)
+        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binarized_data, nsamples=test_k, eta=eta, gamma=gamma)
 
         num_insts += batch_size
         num_batches += 1
