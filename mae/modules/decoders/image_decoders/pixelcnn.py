@@ -70,17 +70,17 @@ class PixelCNNDecoderBinaryImage28x28(BinaryImageDecoder):
         m.weight.data.fill_(1)
         m.bias.data.zero_()
 
-        m = self.main[1]
+        m = self.core[1]
         assert isinstance(m, nn.Conv2d)
         n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
         nn.init.normal_(m.weight, 0, math.sqrt(2. / n))
 
-        m = self.main[4]
+        m = self.core[4]
         assert isinstance(m, nn.Conv2d)
         n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
         nn.init.normal_(m.weight, 0, math.sqrt(2. / n))
 
-        m = self.main[2]
+        m = self.core[2]
         assert isinstance(m, nn.BatchNorm2d)
         m.weight.data.fill_(1)
         m.bias.data.zero_()
