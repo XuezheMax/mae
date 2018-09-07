@@ -42,8 +42,6 @@ class ResNetBlock(nn.Module):
     def reset_parameters(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                # m.weight.normal_(0, math.sqrt(2. / n))
                 nn.init.xavier_normal_(m.weight)
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)

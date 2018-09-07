@@ -176,6 +176,8 @@ class NINBlock(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
+        nn.init.xavier_normal_(self.nin.weight)
+
         nn.init.constant_(self.bn.weight, 1)
         nn.init.constant_(self.bn.bias, 0)
 

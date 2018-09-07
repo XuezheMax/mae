@@ -174,8 +174,6 @@ class MaskedConv2d(nn.Conv2d):
 
     @overrides
     def reset_parameters(self):
-        # n = self.kernel_size[0] * self.kernel_size[1] * self.out_channels
-        # nn.init.normal_(self.weight, 0, math.sqrt(2. / n))
         nn.init.xavier_normal_(self.weight)
         if self.bias is not None:
             nn.init.constant_(self.bias, 0)
@@ -197,8 +195,7 @@ class DownShiftConv2d(nn.Conv2d):
 
     @overrides
     def reset_parameters(self):
-        n = self.kernel_size[0] * self.kernel_size[1] * self.out_channels
-        nn.init.normal_(self.weight, 0, math.sqrt(2. / n))
+        nn.init.xavier_normal_(self.weight)
         if self.bias is not None:
             nn.init.constant_(self.bias, 0)
 
@@ -232,8 +229,7 @@ class DownShiftConvTranspose2d(nn.ConvTranspose2d):
 
     @overrides
     def reset_parameters(self):
-        n = self.kernel_size[0] * self.kernel_size[1] * self.in_channels
-        nn.init.normal_(self.weight, 0, math.sqrt(2. / n))
+        nn.init.xavier_normal_(self.weight)
         if self.bias is not None:
             nn.init.constant_(self.bias, 0)
 
