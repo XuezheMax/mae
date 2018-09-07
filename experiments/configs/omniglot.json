@@ -1,0 +1,20 @@
+{
+  "encoder": {
+    "type": "gaussian",
+    "core": {
+      "type": "resnet_binary_28x28",
+      "nz": 32
+    },
+    "prior_flow": {
+      "type": "af_made",
+      "input_size": 32,
+      "num_blocks": 3
+    },
+    "ngpu": 1
+  },
+  "decoder": {
+    "type": "resnet_binary_28x28",
+    "nz": 32,
+    "ngpu": 1
+  }
+}
