@@ -13,7 +13,7 @@ import numpy as np
 import torch
 from torch import optim
 from torchvision.utils import save_image
-from torch.nn.utils import clip_grad_norm
+from torch.nn.utils import clip_grad_norm_
 
 from mae.data import load_datasets
 from mae.modules import MAE
@@ -127,7 +127,7 @@ def train(epoch):
         optimizer.zero_grad()
         loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binarized_data, nsamples=training_k, eta=eta, gamma=gamma)
         loss.backward()
-        clip_grad_norm(mae.parameters(), 5.0)
+        clip_grad_norm_(mae.parameters(), 5.0)
         optimizer.step()
 
         with torch.no_grad():
