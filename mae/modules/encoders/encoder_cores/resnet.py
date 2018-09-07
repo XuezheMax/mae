@@ -31,13 +31,15 @@ class ResnetEncoderCoreBinaryImage28x28(EncoderCore):
         self.reset_parameters()
 
     def reset_parameters(self):
-        for m in self.main.modules():
-            if isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                nn.init.normal_(m.weight, 0, math.sqrt(2. / n))
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
+        m = self.main[1]
+        assert isinstance(m, nn.Conv2d)
+        nn.init.xavier_normal_(m.weight)
+
+        m = self.main[2]
+        assert isinstance(m, nn.BatchNorm2d)
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
+
         nn.init.xavier_uniform_(self.linear.weight)
 
     def forward(self, input):
@@ -89,13 +91,31 @@ class ResnetEncoderCoreColorImage32x32(EncoderCore):
         self.reset_parameters()
 
     def reset_parameters(self):
-        for m in self.main.modules():
-            if isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                nn.init.normal_(m.weight, 0, math.sqrt(2. / n))
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
+        m = self.main[1]
+        assert isinstance(m, nn.Conv2d)
+        nn.init.xavier_normal_(m.weight)
+
+        m = self.main[5]
+        assert isinstance(m, nn.Conv2d)
+        nn.init.xavier_normal_(m.weight)
+
+        m = self.main[9]
+        assert isinstance(m, nn.Conv2d)
+        nn.init.xavier_normal_(m.weight)
+
+        m = self.main[11]
+        assert isinstance(m, nn.Conv2d)
+        nn.init.xavier_normal_(m.weight)
+
+        m = self.main[2]
+        assert isinstance(m, nn.BatchNorm2d)
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
+
+        m = self.main[6]
+        assert isinstance(m, nn.BatchNorm2d)
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
 
     def forward(self, input):
         # [batch, 2 * nz_channels, 8, 8]

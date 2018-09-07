@@ -28,13 +28,15 @@ class PixelCNNBlock(nn.Module):
     def reset_parameters(self):
         m = self.main[0]
         assert isinstance(m, nn.Conv2d)
-        n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-        nn.init.normal_(m.weight, 0, math.sqrt(2. / n))
+        # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+        # nn.init.normal_(m.weight, 0, math.sqrt(2. / n))
+        nn.init.xavier_normal_(m.weight)
 
         m = self.main[6]
         assert isinstance(m, nn.Conv2d)
-        n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-        nn.init.normal_(m.weight, 0, math.sqrt(2. / n))
+        # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+        # nn.init.normal_(m.weight, 0, math.sqrt(2. / n))
+        nn.init.xavier_normal_(m.weight)
 
         m = self.main[1]
         assert isinstance(m, nn.BatchNorm2d)

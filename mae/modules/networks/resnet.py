@@ -40,14 +40,14 @@ class ResNetBlock(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        with torch.no_grad():
-            for m in self.modules():
-                if isinstance(m, nn.Conv2d):
-                    n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                    m.weight.normal_(0, math.sqrt(2. / n))
-                elif isinstance(m, nn.BatchNorm2d):
-                    m.weight.fill_(1)
-                    m.bias.zero_()
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                # m.weight.normal_(0, math.sqrt(2. / n))
+                nn.init.xavier_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
         # [batch, planes, ceil(h/stride), ceil(w/stride)]
@@ -89,14 +89,14 @@ class DeResNetBlock(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        with torch.no_grad():
-            for m in self.modules():
-                if isinstance(m, nn.ConvTranspose2d):
-                    n = m.kernel_size[0] * m.kernel_size[1] * m.in_channels
-                    m.weight.normal_(0, math.sqrt(2. / n))
-                elif isinstance(m, nn.BatchNorm2d):
-                    m.weight.fill_(1)
-                    m.bias.zero_()
+        for m in self.modules():
+            if isinstance(m, nn.ConvTranspose2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.in_channels
+                # m.weight.normal_(0, math.sqrt(2. / n))
+                nn.init.xavier_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
         x = self.activation(x)

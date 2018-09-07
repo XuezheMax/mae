@@ -30,13 +30,15 @@ class ResnetDecoderBinaryImage28x28(BinaryImageDecoder):
             self.core = nn.DataParallel(self.core, device_ids=list(range(ngpu)))
 
     def reset_parameters(self):
-        for m in self.core.modules():
-            if isinstance(m, nn.ConvTranspose2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.in_channels
-                nn.init.normal_(m.weight, 0, math.sqrt(2. / n))
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
+        m = self.core[0]
+        assert isinstance(m, nn.ConvTranspose2d)
+        nn.init.xavier_normal_(m.weight)
+
+        m = self.main[1]
+        assert isinstance(m, nn.BatchNorm2d)
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
+
 
     @classmethod
     def from_params(cls, params: Dict) -> "ResnetDecoderBinaryImage28x28":
