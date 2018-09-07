@@ -34,7 +34,7 @@ class ResnetDecoderBinaryImage28x28(BinaryImageDecoder):
         assert isinstance(m, nn.ConvTranspose2d)
         nn.init.xavier_normal_(m.weight)
 
-        m = self.main[1]
+        m = self.core[1]
         assert isinstance(m, nn.BatchNorm2d)
         nn.init.constant_(m.weight, 1)
         nn.init.constant_(m.bias, 0)
