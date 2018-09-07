@@ -302,7 +302,7 @@ for epoch in range(1, args.epochs + 1):
 mae.load_state_dict(torch.load(model_name))
 with torch.no_grad():
     reconstruct()
-    sample_z = mae.sample_from_proir(400, device=device)
+    sample_z, _ = mae.sample_from_proir(400, device=device)
     sample_x, sample_probs = mae.decode(sample_z, random_sample=True)
     image_file = 'sample_binary.png'
     save_image(sample_x.data.cpu(), os.path.join(result_path, image_file), nrow=20)
