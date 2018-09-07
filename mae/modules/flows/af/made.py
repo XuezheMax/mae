@@ -72,7 +72,7 @@ class AFMADE(AF):
         self.hidden_size = hidden_size
         self.blocks = []
         for i in range(num_blocks):
-            block = AFMADEDualBlock(self.nz, num_hiddens, hidden_size, bias=bias, var=var, weight_norm=weight_norm)
+            block = AFMADEDualBlock(input_size, num_hiddens, hidden_size, bias=bias, var=var, weight_norm=weight_norm)
             self.blocks.append(block)
         assert num_blocks == len(self.blocks)
         self.blocks = nn.ModuleList(self.blocks)

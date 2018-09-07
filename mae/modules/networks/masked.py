@@ -137,12 +137,12 @@ class MaskedLinearWeightNorm(nn.Module):
         self._init = True
 
     def reset_parameters(self):
-        nn.init.xavier_uniform(self.weight_v, gain=0.1)
+        nn.init.xavier_uniform_(self.weight_v, gain=0.1)
         self.weight_v.data.mul_(self.mask)
         _norm = norm(self.weight_v, 0).data + 1e-8
         self.weight_g.data.copy_(_norm.log())
         if self.bias is not None:
-            nn.init.constant(self.bias, 0.)
+            nn.init.constant_(self.bias, 0.)
 
     def forward(self, input):
         self.weight_v.data.mul_(self.mask)

@@ -36,6 +36,7 @@ class GaussianEncoder(Encoder):
                  ngpu=1):
         super(GaussianEncoder, self).__init__()
         self.ngpu = ngpu
+        GaussianEncoder._CHECK(core, prior_flow, posterior_flow)
 
         if ngpu > 1:
             core = nn.DataParallel(core, device_ids=list(range(ngpu)))
@@ -147,7 +148,7 @@ class GaussianEncoder(Encoder):
 
         dd = math.sqrt((batch_size ** 2 - 1) / (batch_size ** 2 - batch_size - 1.0))
         # [batch, batch, z_shape] --> [batch, batch, -1] --> [batch, batch] --> [1]
-        PostKL_std = (PostKL.view(Eye.size() + (-1)).sum(dim=2) + Eye * PostKL_mean.sum()).std() * dd
+        PostKL_std = (PostKL.view(Eye.size() + (-1,)).sum(dim=2) + Eye * PostKL_mean.sum()).std() * dd
         return PostKL_mean, PostKL_std
 
     @overrides

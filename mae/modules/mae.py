@@ -1,6 +1,9 @@
 __author__ = 'max'
 
+import os
 import math
+import json
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,8 +15,19 @@ from mae.modules.utils import logsumexp
 
 
 class MAE(nn.Module):
+    @classmethod
+    def _CHECK(cls, encoder: Encoder, decoder: Decoder):
+        def _CHECK_SIZE(s1: Tuple, s2: Tuple):
+            assert np.prod(s1) == np.prod(s2)
+
+        try:
+            _CHECK_SIZE(encoder.z_shape(), decoder.z_shape())
+        except AssertionError:
+            raise ValueError('encoder latent z shape %s does not match decoder input shape %s' % (encoder.z_shape(), decoder.z_shape()))
+
     def __init__(self, encoder: Encoder, decoder: Decoder):
         super(MAE, self).__init__()
+        MAE._CHECK(encoder, decoder)
         self.encoder = encoder
         self.decoder = decoder
 
@@ -106,9 +120,12 @@ class MAE(nn.Module):
             Tensor7: loss of std of posterior KL shape=[1]
 
         """
+        # [batch, nsamples, z_shape]
         z, KL, postKL = self.encode(x, nsamples)
+
+        z_shape_dec = self.decoder.z_shape()
         # [batch, nsamples]
-        reconstruct_err = self.decoder.reconstruct_error(x, z)
+        reconstruct_err = self.decoder.reconstruct_error(x, z.view(z.size(0), z.size(1), *z_shape_dec))
 
         postKL_mean = postKL[0].sum()
         postKL_std = postKL[1]
@@ -191,3 +208,9 @@ class MAE(nn.Module):
         decoder = Decoder.by_name(decoder_params.pop('type')).from_params(decoder_params)
 
         return MAE(encoder, decoder)
+
+    @classmethod
+    def load(cls, model_path) -> "MAE":
+        params = json.load(open(os.path.join(model_path, 'config.json'), 'r'))
+        model_name = os.path.join(model_path, 'model.pt')
+        return MAE.from_params(params).load_state_dict(torch.load(model_name))
