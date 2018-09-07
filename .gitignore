@@ -104,19 +104,13 @@ venv.bak/
 .mypy_cache/
 
 # data dir
-/data/
-
-# result dir
-/results/
+/experiments/data/
 
 # model dir
-/models/
+/experiments/models/
 
 # log dir
-/log/
-
-# tmp dir
-/tmp/
+/experiments/log/
 
 # test dir
 /tests/
