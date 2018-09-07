@@ -65,7 +65,7 @@ class PixelCNNDecoderBinaryImage28x28(BinaryImageDecoder):
         nn.init.xavier_uniform_(m.weight)
         nn.init.constant_(m.bias, 0)
 
-        m = self.z_transform
+        m = self.z_transform[2]
         assert isinstance(m, nn.BatchNorm2d)
         m.weight.data.fill_(1)
         m.bias.data.zero_()
