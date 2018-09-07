@@ -52,8 +52,8 @@ if not os.path.exists(model_path):
     os.makedirs(model_path)
 
 result_path = os.path.join(model_path, 'images')
-if not os.path.exists(model_path):
-    os.makedirs(model_path)
+if not os.path.exists(result_path):
+    os.makedirs(result_path)
 
 
 def iterate_minibatches(data, batch_size, shuffle, binarize):
