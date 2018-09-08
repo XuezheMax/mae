@@ -85,7 +85,7 @@ class MAE(nn.Module):
         """
         Args:
             z: Tensor
-                the tensor of latent z shape=[batch, z_shape_decoder]
+                the tensor of latent z shape=[batch, z_shape]
             random_sample: boolean
                 randomly sample or decode via argmaximizing probability
 
@@ -93,7 +93,8 @@ class MAE(nn.Module):
             the tensor of decoded x shape=[batch, x_shape]
 
         """
-        return self.decoder.decode(z, random_sample)
+        z_shape_dec = self.decoder.z_shape()
+        return self.decoder.decode(z.view(z.size(0), *z_shape_dec), random_sample)
 
     def loss(self, x, nsamples, beta=1.0, eta=0.0, gamma=0.0):
         """
@@ -154,11 +155,8 @@ class MAE(nn.Module):
         """
         # [batch, k, z_shape]
         z, _ = self.sample_from_posterior(x, nsamples=k)
-        # [batch, *]
-        z_shape_dec = self.decoder.z_shape()
-        # [batch, k, z_shape] -> [batch, z_shape] -> [batch, z_shape_dec]
-        z = z.mean(dim=1).view(x.size(0), *z_shape_dec)
-        return self.decode(z, random_sample=random_sample)
+        # [batch, k, z_shape] -> [batch, z_shape] --> [batch, x_shape]
+        return self.decode(z.mean(dim=1), random_sample=random_sample)
 
     def nll(self, x, k):
         """
