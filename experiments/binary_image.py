@@ -238,7 +238,7 @@ def calc_nll():
 
         batch_size = len(binarized_data)
         num_insts += batch_size
-        (elbo, recon, kl), iw = mae.nll_iw(binarized_data, k)
+        (elbo, recon, kl), iw = mae.nll(binarized_data, k)
         nll_elbo += elbo.sum()
         recon_err += recon.sum()
         kl_err += kl.sum()
