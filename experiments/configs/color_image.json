@@ -8,7 +8,7 @@
     "ngpu": 1
   },
   "decoder": {
-    "type": "pixelcnn_color_32x32",
+    "type": "resnet_color_32x32",
     "z_channels": 16,
     "nmix": 5,
     "ngpu": 1
