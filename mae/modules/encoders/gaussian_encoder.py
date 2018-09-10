@@ -169,12 +169,10 @@ class GaussianEncoder(Encoder):
         """
         # [batch, nsamples, z_shape]
         z, distr_params = self.sample_from_posterior(x, nsamples=nsamples)
+        # [batch, z_shape]
         mu, logvar, _, _ = distr_params
 
         z_size = z.size()
-        # [batch, nz]
-        mu = mu.view(z_size[0], -1)
-        logvar = logvar.view(z_size[0], -1)
 
         if self.prior_flow is None and self.posterior_flow is None:
             # see Appendix B from VAE paper:
@@ -182,7 +180,7 @@ class GaussianEncoder(Encoder):
             # https://arxiv.org/abs/1312.6114
             # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
             # KL = -0.5 * torch.sum(logvar - mu.pow(2) - logvar.exp() + 1)
-            KL = 0.5 * (mu.pow(2) + logvar.exp() - logvar - 1).sum(dim=1)
+            KL = 0.5 * (mu.pow(2) + logvar.exp() - logvar - 1).view(z_size[0], -1).sum(dim=1)
         else:
             # [batch * nsamples] --> [batch, nsamples]
             log_probs_prior = self.log_probability_prior(z.view(z_size[0] * z_size[1], *z_size[2:])).view(z_size[0], z_size[1])
