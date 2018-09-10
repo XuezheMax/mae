@@ -57,7 +57,7 @@ def load_lsun(data_path):
                                  transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                              ]))
 
-    return train_data, val_data
+    return train_data, val_data, 5000
 
 
 def load_cifar10():
@@ -72,4 +72,4 @@ def load_cifar10():
                                      transforms.ToTensor(),
                                      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                                  ]))
-    return train_data, test_data
+    return train_data, test_data, 2000

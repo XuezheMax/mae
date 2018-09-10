@@ -38,10 +38,10 @@ class ColorImageDecoder(Decoder):
         if x is not None:
             coeffs = torch.tanh(output[:, (self.nc * 2 + 1) * nmix:(self.nc * 2 + 4) * nmix].view(batch, nmix, self.nc, H, W))
             # [batch, mix, H, W] -> [batch, mix, 1, H, W]
-            mean0 = mu[:, :, 0].unsqueeze(2)
-            mean1 = (mu[:, :, 1] + coeffs[:, :, 0] * x[:, 0].unsqueeze(1)).unsqueeze(2)
-            mean2 = (mu[:, :, 2] + coeffs[:, :, 1] * x[:, 0].unsqueeze(1) + coeffs[:, :, 2] * x[:, 1].unsqueeze(1)).unsqueeze(2)
-            means = torch.cat([mean0, mean1, mean2], dim=2)
+            mean0 = mu[:, :, 0]
+            mean1 = (mu[:, :, 1] + coeffs[:, :, 0] * x[:, 0].unsqueeze(1))
+            mean2 = (mu[:, :, 2] + coeffs[:, :, 1] * x[:, 0].unsqueeze(1) + coeffs[:, :, 2] * x[:, 1].unsqueeze(1))
+            means = torch.stack([mean0, mean1, mean2], dim=2)
         else:
             means = mu
 

@@ -20,14 +20,15 @@ from mae.modules import MAE
 
 parser = argparse.ArgumentParser(description='MAE Binary Image Example')
 parser.add_argument('--config', type=str, help='config file', required=True)
-parser.add_argument('--data', choices=['mnist', 'omniglot'], help='data set', required=True)
+parser.add_argument('--data', choices=['cifar10', 'lsun'], help='data set', required=True)
 parser.add_argument('--batch-size', type=int, default=100, metavar='N', help='input batch size for training (default: 128)')
 parser.add_argument('--epochs', type=int, default=1000, metavar='N', help='number of epochs to train (default: 10)')
 parser.add_argument('--seed', type=int, default=524287, metavar='S', help='random seed (default: 1)')
-parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
+parser.add_argument('--log-interval', type=int, default=50, metavar='N', help='how many batches to wait before logging training status')
+parser.add_argument('--lr', type=float, default=0.0001, help='initial learning rate')
 parser.add_argument('--eta', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--gamma', type=float, default=0.0, metavar='N', help='')
-parser.add_argument('--schedule', type=int, default=20, help='schedule for learning rate decay')
+parser.add_argument('--schedule', type=int, default=10, help='schedule for learning rate decay')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 
 args = parser.parse_args()
@@ -39,10 +40,12 @@ if args.cuda:
     torch.cuda.manual_seed(args.seed)
 device = torch.device('cuda') if args.cuda else torch.device('cpu')
 
-imageSize = 28
+imageSize = 32
+nc = 3
+nx = imageSize * imageSize * nc
 training_k = 1
 test_k = 5
-k = 4096
+k = 512
 eta = args.eta
 gamma = args.gamma
 
@@ -56,48 +59,46 @@ if not os.path.exists(result_path):
     os.makedirs(result_path)
 
 
-def iterate_minibatches(data, batch_size, shuffle, binarize):
-    if shuffle:
-        indices = np.arange(len(data))
-        np.random.shuffle(indices)
-    else:
-        indices = None
+def get_batch(data, indices):
+    imgs = []
+    labels = []
+    for index in indices:
+        img, label = data[index]
+        imgs.append(img)
+        labels.append(label)
+    return torch.stack(imgs, dim=0), torch.IntTensor(labels)
 
-    for start_idx in range(0, len(data), batch_size):
-        if shuffle:
-            excerpt = indices[start_idx:start_idx + batch_size]
-        else:
-            excerpt = slice(start_idx, start_idx + batch_size)
-        if binarize:
-            yield np.less_equal(np.random.random(data[excerpt].shape), data[excerpt]).astype(np.float32)
-        else:
-            yield data[excerpt]
+
+def iterate_minibatches(data, indices, batch_size, shuffle):
+    if shuffle:
+        np.random.shuffle(indices)
+
+    for start_idx in range(0, len(indices), batch_size):
+        excerpt = indices[start_idx:start_idx + batch_size]
+        yield get_batch(data, excerpt)
 
 
 dataset = args.data
 train_data, test_data, n_val = load_datasets(dataset)
 
-np.random.shuffle(train_data)
-np.random.shuffle(test_data)
+train_index = np.arange(len(train_data))
+np.random.shuffle(train_index)
+val_index = train_index[-n_val:]
+train_index = train_index[:-n_val]
 
-val_data = train_data[-n_val:]
-train_data = train_data[:-n_val]
+test_index = np.arange(len(test_data))
+np.random.shuffle(test_index)
 
-val_binarized_data = np.concatenate([np.less_equal(np.random.random(val_data.shape), val_data).astype(np.float32) for _ in range(5)], axis=0)
-test_binarized_data = np.concatenate([np.less_equal(np.random.random(test_data.shape), test_data).astype(np.float32) for _ in range(5)], axis=0)
-
-np.random.shuffle(val_binarized_data)
-np.random.shuffle(test_binarized_data)
-print(train_data.shape)
-print(val_binarized_data.shape)
-print(test_binarized_data.shape)
+print(len(train_index))
+print(len(val_index))
+print(len(test_data))
 
 params = json.load(open(args.config, 'r'))
 json.dump(params, open(os.path.join(model_path, 'config.json'), 'w'), indent=2)
 mae = MAE.from_params(params).to(device)
 print(args)
 
-lr = 1e-3
+lr = args.lr
 optimizer = optim.Adam(mae.parameters(), lr=lr)
 decay_rate = 0.5
 schedule = args.schedule
@@ -120,12 +121,12 @@ def train(epoch):
     num_batches = 0
 
     num_back = 0
-    for batch_idx, binarized_data in enumerate(iterate_minibatches(train_data, args.batch_size, True, True)):
-        binarized_data = torch.from_numpy(binarized_data).to(device).float()
+    for batch_idx, (data, _) in enumerate(iterate_minibatches(train_data, train_index, args.batch_size, True)):
+        data = data.to(device)
 
-        batch_size = len(binarized_data)
+        batch_size = len(data)
         optimizer.zero_grad()
-        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binarized_data, nsamples=training_k, eta=eta, gamma=gamma)
+        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(data, nsamples=training_k, eta=eta, gamma=gamma)
         loss.backward()
         clip_grad_norm_(mae.parameters(), 5.0)
         optimizer.step()
@@ -160,11 +161,11 @@ def train(epoch):
     train_loss = recon_loss / num_insts + kl_loss / num_insts + pkl_mean_loss / num_batches + pkl_std_loss / num_batches
     print('Average loss: {:.2f} (recon: {:.2f}, kl: {:.2f}, pkl (mean, std): {:.2f}, {:.2f}, pkl_loss (mean, std): {:.2f}, {:.2f})'.format(
         train_loss, recon_loss / num_insts, kl_loss / num_insts,
-        pkl_mean / num_batches, pkl_std / num_batches,
-        pkl_mean_loss / num_batches, pkl_std_loss / num_batches))
+                    pkl_mean / num_batches, pkl_std / num_batches,
+                    pkl_mean_loss / num_batches, pkl_std_loss / num_batches))
 
 
-def eval(eval_data):
+def eval(eval_data, eval_index):
     mae.eval()
     recon_loss = 0.
     kl_loss = 0.
@@ -174,11 +175,11 @@ def eval(eval_data):
     pkl_std = 0.
     num_insts = 0
     num_batches = 0
-    for i, binarized_data in enumerate(iterate_minibatches(eval_data, 512, False, False)):
-        binarized_data = torch.from_numpy(binarized_data).to(device).float()
+    for i, (data, _) in enumerate(iterate_minibatches(eval_data, eval_index, 200, False)):
+        data = data.to(device)
 
-        batch_size = len(binarized_data)
-        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binarized_data, nsamples=test_k, eta=eta, gamma=gamma)
+        batch_size = len(data)
+        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(data, nsamples=test_k, eta=eta, gamma=gamma)
 
         num_insts += batch_size
         num_batches += 1
@@ -197,32 +198,27 @@ def eval(eval_data):
     pkl_std_loss /= num_batches
     test_loss = recon_loss + kl_loss + pkl_mean_loss + pkl_std_loss
     test_elbo = recon_loss + kl_loss
+    bits_per_pixel = test_elbo / (nx * np.log(2.0))
 
-    print('loss: {:.2f} (elbo: {:.2f} recon: {:.2f}, kl: {:.2f}, pkl (mean, std): {:.2f}, {:.2f}, pkl_loss (mean, std): {:.2f}, {:.2f})'.format(
+    print('loss: {:.2f} (elbo: {:.2f} recon: {:.2f}, kl: {:.2f}, pkl (mean, std): {:.2f}, {:.2f}, pkl_loss (mean, std): {:.2f}, {:.2f}), BPD: {:.2f}'.format(
         test_loss, test_elbo, recon_loss, kl_loss,
-        pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss))
-    return test_loss, recon_loss, kl_loss, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss
+        pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss,
+        bits_per_pixel))
+    return test_loss, recon_loss, kl_loss, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss, bits_per_pixel
 
 
 def reconstruct():
     mae.eval()
     n = 128
-    data = torch.from_numpy(test_data[0:n]).to(device).float()
-    binarized_data = torch.ge(data, 0.5).float()
+    data, _ = get_batch(test_data, test_index[:n])
+    data = data.to(device)
 
-    recon_img, recon_probs = mae.reconstruct(binarized_data)
-    comparison = torch.cat([data, recon_probs, binarized_data, recon_img], dim=0).cpu()
-    reorder_index = torch.from_numpy(np.array([[i + j * n for j in range(4)] for i in range(n)])).view(-1)
+    recon_img, _ = mae.reconstruct(data)
+    comparison = torch.cat([data, recon_img], dim=0).cpu()
+    reorder_index = torch.from_numpy(np.array([[i + j * n for j in range(2)] for i in range(n)])).view(-1)
     comparison = comparison[reorder_index]
-    image_file = 'reconstruct.fixed.png'
-    save_image(comparison, os.path.join(result_path, image_file), nrow=32)
-
-    recon_img, recon_probs = mae.reconstruct(binarized_data, random_sample=True)
-    comparison = torch.cat([data, recon_probs, binarized_data, recon_img], dim=0).cpu()
-    reorder_index = torch.from_numpy(np.array([[i + j * n for j in range(4)] for i in range(n)])).view(-1)
-    comparison = comparison[reorder_index]
-    image_file = 'reconstruct.random.png'
-    save_image(comparison, os.path.join(result_path, image_file), nrow=32)
+    image_file = 'reconstruct.png'
+    save_image(comparison, os.path.join(result_path, image_file), nrow=16, normalize=True)
 
 
 def calc_nll():
@@ -233,12 +229,12 @@ def calc_nll():
     kl_err = 0.
     nll_iw = 0.
     num_insts = 0
-    for i, binarized_data in enumerate(iterate_minibatches(test_binarized_data, 1, False, False)):
-        binarized_data = torch.from_numpy(binarized_data).to(device).float()
+    for i, (data, _) in enumerate(iterate_minibatches(test_data, test_index, 1, False)):
+        data = data.to(device)
 
-        batch_size = len(binarized_data)
+        batch_size = len(data)
         num_insts += batch_size
-        (elbo, recon, kl), iw = mae.nll(binarized_data, k)
+        (elbo, recon, kl), iw = mae.nll(data, k)
         nll_elbo += elbo.sum()
         recon_err += recon.sum()
         kl_err += kl.sum()
@@ -248,8 +244,9 @@ def calc_nll():
     recon_err /= num_insts
     kl_err /= num_insts
     nll_iw /= num_insts
-    print('Test NLL: ELBO: {:.2f} (recon: {:.2f}, kl: {:.2f}), IW: {:.2f}, time: {:.2f}s'.format(nll_elbo, recon_err, kl_err, nll_iw, (time.time() - start_time)))
-    return (nll_elbo, recon_err, kl_err), nll_iw
+    bits_per_pixel = nll_iw / (nx * np.log(2.0))
+    print('Test NLL: ELBO: {:.2f} (recon: {:.2f}, kl: {:.2f}), IW: {:.2f}, BPD: {:.2f}, time: {:.2f}s'.format(nll_elbo, recon_err, kl_err, nll_iw, bits_per_pixel, (time.time() - start_time)))
+    return (nll_elbo, recon_err, kl_err), nll_iw, bits_per_pixel
 
 
 best_epoch = 0
@@ -261,12 +258,13 @@ best_pkl_mean = 1e12
 best_pkl_mean_loss = 1e12
 best_pkl_std = 1e12
 best_pkl_std_loss = 1e12
+best_bpd = 1e12
 
 for epoch in range(1, args.epochs + 1):
     train(epoch)
     print('----------------------------------------------------------------------------------------------------------------------------')
     with torch.no_grad():
-        loss, recon, kl, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss = eval(val_binarized_data)
+        loss, recon, kl, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss, bits_per_pixel = eval(train_data, val_index)
     elbo = recon + kl
     if elbo < best_elbo:
         patient = 0
@@ -281,6 +279,7 @@ for epoch in range(1, args.epochs + 1):
         best_pkl_mean_loss = pkl_mean_loss
         best_pkl_std = pkl_std
         best_pkl_std_loss = pkl_std_loss
+        best_bpd = bits_per_pixel
     elif patient >= schedule:
         mae.load_state_dict(torch.load(model_name))
         lr = lr * decay_rate
@@ -290,10 +289,10 @@ for epoch in range(1, args.epochs + 1):
     else:
         patient += 1
 
-    print('Best: {:.2f} (elbo: {:.2f} recon: {:.2f}, kl: {:.2f}, pkl (mean, std): {:.2f}, {:.2f}, pkl_loss (mean, std): {:.2f}, {:.2f}), epoch: {}'.format(
+    print('Best: {:.2f} (elbo: {:.2f} recon: {:.2f}, kl: {:.2f}, pkl (mean, std): {:.2f}, {:.2f}, pkl_loss (mean, std): {:.2f}, {:.2f}), BPD: {:.2f}, epoch: {}'.format(
         best_loss, best_elbo, best_recon, best_kl,
         best_pkl_mean, best_pkl_std, best_pkl_mean_loss, best_pkl_std_loss,
-        best_epoch))
+        best_bpd, best_epoch))
     print('============================================================================================================================')
 
     if decay == max_decay:
@@ -302,17 +301,15 @@ for epoch in range(1, args.epochs + 1):
 mae.load_state_dict(torch.load(model_name))
 with torch.no_grad():
     reconstruct()
-    sample_z, _ = mae.sample_from_proir(400, device=device)
-    sample_x, sample_probs = mae.decode(sample_z, random_sample=True)
-    image_file = 'sample_binary.png'
-    save_image(sample_x.cpu(), os.path.join(result_path, image_file), nrow=20)
-    image_file = 'sample_cont.png'
-    save_image(sample_probs.cpu(), os.path.join(result_path, image_file), nrow=20)
+    sample_z, _ = mae.sample_from_proir(256, device=device)
+    sample_x, _ = mae.decode(sample_z, random_sample=True)
+    image_file = 'sample.png'
+    save_image(sample_x.cpu(), os.path.join(result_path, image_file), nrow=16, normalize=True)
 
     print('Final val:')
-    eval(val_binarized_data)
+    eval(train_data, val_index)
     print('Final test:')
-    eval(test_binarized_data)
+    eval(test_data, test_index)
     print('----------------------------------------------------------------------------------------------------------------------------')
     calc_nll()
     print('============================================================================================================================')

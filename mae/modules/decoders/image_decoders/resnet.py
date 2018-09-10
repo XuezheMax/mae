@@ -83,6 +83,9 @@ class ResnetDecoderColorImage32x32(ColorImageDecoder):
         )
         self.reset_parameters()
 
+        if ngpu > 1:
+            self.core = nn.DataParallel(self.core, device_ids=list(range(ngpu)))
+
     def reset_parameters(self):
         m = self.core[0]
         assert isinstance(m, nn.ConvTranspose2d)
