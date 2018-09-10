@@ -49,6 +49,7 @@ class GatedResnetBlock(nn.Module):
         nn.init.constant_(self.down_right_bn2.weight, 1)
         nn.init.constant_(self.down_right_bn2.bias, 0)
 
+        nn.init.xavier_normal_(self.nin.weight)
         nn.init.constant_(self.nin_bn.weight, 1)
         nn.init.constant_(self.nin_bn.bias, 0)
 

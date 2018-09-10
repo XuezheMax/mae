@@ -91,6 +91,7 @@ class MAE(nn.Module):
 
         Returns: Tensor
             the tensor of decoded x shape=[batch, x_shape]
+            the probability matrix of each pixel shape=[batch, x_shape]
 
         """
         z_shape_dec = self.decoder.z_shape()
@@ -151,6 +152,7 @@ class MAE(nn.Module):
 
         Returns: Tensor
             the tensor of reconstruct data [batch, *]
+            the probability matrix of each pixel shape=[batch, x_shape]
 
         """
         # [batch, k, z_shape]

@@ -59,11 +59,12 @@ class ResnetEncoderCoreBinaryImage28x28(EncoderCore):
 class ResnetEncoderCoreColorImage32x32(EncoderCore):
     """
     Resnet core for color image (RGB) of 32x32 resolution.
+    output z shape = [z_channels, 8, 8]
     """
 
-    def __init__(self):
+    def __init__(self, z_channels):
         super(ResnetEncoderCoreColorImage32x32, self).__init__()
-        self.nz_channels = 16
+        self.z_channels = z_channels
         self.H = 8
         self.W = 8
         self.nc = 3
@@ -83,10 +84,11 @@ class ResnetEncoderCoreColorImage32x32(EncoderCore):
             ResNet(96, [96, 96, 96], [1, 1, 1]),
             # state [96, 8, 8]
             nn.Conv2d(96, 48, 1, 1, bias=False),
-            nn.Tanh(),
+            nn.BatchNorm2d(48),
+            nn.ELU(),
             # state [48, 8, 8]
-            nn.Conv2d(48, 2 * self.nz_channels, 1, 1, bias=False),
-            # [2 * nz_channels, 8, 8]
+            nn.Conv2d(48, 2 * self.z_channels, 1, 1, bias=False),
+            # [2 * z_channels, 8, 8]
         )
         self.reset_parameters()
 
@@ -103,7 +105,7 @@ class ResnetEncoderCoreColorImage32x32(EncoderCore):
         assert isinstance(m, nn.Conv2d)
         nn.init.xavier_normal_(m.weight)
 
-        m = self.main[11]
+        m = self.main[12]
         assert isinstance(m, nn.Conv2d)
         nn.init.xavier_normal_(m.weight)
 
@@ -117,20 +119,24 @@ class ResnetEncoderCoreColorImage32x32(EncoderCore):
         nn.init.constant_(m.weight, 1)
         nn.init.constant_(m.bias, 0)
 
+        m = self.main[10]
+        assert isinstance(m, nn.BatchNorm2d)
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
+
     def forward(self, input):
-        # [batch, 2 * nz_channels, 8, 8]
+        # [batch, 2 * z_channels, 8, 8]
         output = self.main(input)
-        # [batch, nz_channels, 8, 8]
+        # [batch, z_channels, 8, 8]
         return output.chunk(2, 1)
 
     @overrides
     def output_size(self) -> Tuple:
-        return self.nz_channels, self.H, self.W
+        return self.z_channels, self.H, self.W
 
     @classmethod
     def from_params(cls, params: Dict) -> "ResnetEncoderCoreColorImage32x32":
-        assert len(params) == 0
-        return ResnetEncoderCoreColorImage32x32()
+        return ResnetEncoderCoreColorImage32x32(**params)
 
 
 ResnetEncoderCoreBinaryImage28x28.register('resnet_binary_28x28')

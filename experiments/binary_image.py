@@ -95,7 +95,7 @@ print(test_binarized_data.shape)
 params = json.load(open(args.config, 'r'))
 json.dump(params, open(os.path.join(model_path, 'config.json'), 'w'), indent=2)
 mae = MAE.from_params(params).to(device)
-print(mae)
+print(args)
 
 lr = 1e-3
 optimizer = optim.Adam(mae.parameters(), lr=lr)

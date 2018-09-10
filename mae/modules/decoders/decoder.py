@@ -23,6 +23,7 @@ class Decoder(nn.Module):
                 the tensor of latent z shape=[batch, z_shape]
             random_sample: boolean
                 randomly sample or decode via argmaximizing probability
+                the probability matrix of each pixel shape=[batch, x_shape]
 
         Returns: Tensor
             the tensor of decoded x shape=[batch, x_shape]
