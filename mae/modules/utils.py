@@ -131,7 +131,7 @@ def sample_from_discretized_mix_logistic(means, logscales, logit_probs, random_s
 
     """
     # [batch, 1, H, W] -> [batch, nc, H, W]
-    index = logit_probs.argmax(dim=1, keepdim=True) + logit_probs.new_zeros(means.size(0), *means.size()[2:])
+    index = logit_probs.argmax(dim=1, keepdim=True) + logit_probs.new_zeros(means.size(0), *means.size()[2:]).long()
     # [batch, nc, H, W] -> [batch, 1, nc, H, W]
     index = index.unsqueeze(1)
     one_hot = means.new_zeros(means.size()).scatter_(1, index, 1)
