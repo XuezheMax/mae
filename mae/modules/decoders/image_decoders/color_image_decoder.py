@@ -45,7 +45,7 @@ class ColorImageDecoder(Decoder):
         batch, nmix, H, W = logit_probs.size()
 
         # [batch, nc * mix, H, W] --> [batch, mix, nc, H, W]
-        mu = output[:, nmix:(self.nc + 1) * nmix].view(batch, nmix, self.nc, H, W)
+        mu = torch.tanh(output[:, nmix:(self.nc + 1) * nmix].view(batch, nmix, self.nc, H, W))
         log_scale = output[:, (self.nc + 1) * nmix:(self.nc * 2 + 1) * nmix].view(batch, nmix, self.nc, H, W).clamp(min=-7.0)
         coeffs = torch.tanh(output[:, (self.nc * 2 + 1) * nmix:(self.nc * 2 + 4) * nmix].view(batch, nmix, self.nc, H, W))
 
