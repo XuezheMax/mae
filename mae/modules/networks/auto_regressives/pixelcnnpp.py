@@ -66,14 +66,14 @@ class GatedResnetBlock(nn.Module):
         # dropout
         c1 = self.dropout(c1)
         a1, b1 = (self.down_bn2(self.down_conv2(c1)) + hc).chunk(2, 1)
-        c1 = F.elu(a1 * F.sigmoid(b1) + x1)
+        c1 = F.elu(a1 * torch.sigmoid(b1) + x1)
 
         c2 = self.down_right_bn1(self.down_right_conv1(x2))
         c2 = F.elu(c2 + self.nin_bn(self.nin(c1)))
         # dropout
         c2 = self.dropout(c2)
         a2, b2 = (self.down_right_bn2(self.down_right_conv2(c2)) + hc).chunk(2, 1)
-        c2 = F.elu(a2 * F.sigmoid(b2) + x2)
+        c2 = F.elu(a2 * torch.sigmoid(b2) + x2)
 
         return c1, c2
 

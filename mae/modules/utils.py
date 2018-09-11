@@ -3,7 +3,6 @@ __author__ = 'max'
 import math
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 
@@ -89,8 +88,8 @@ def discretized_mix_logistic_loss(x, means, logscales, bin_size, lower, upper, l
     x_in = inv_stdv * centered_x
 
     # [batch, nsamples, nmix, nc, H, W]
-    cdf_min = F.sigmoid(min_in)
-    cdf_plus = F.sigmoid(plus_in)
+    cdf_min = torch.sigmoid(min_in)
+    cdf_plus = torch.sigmoid(plus_in)
     # lower < x < upper
     cdf_delta = cdf_plus - cdf_min
     log_cdf_mid = torch.log(cdf_delta + eps)
