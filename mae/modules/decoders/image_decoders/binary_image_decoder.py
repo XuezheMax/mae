@@ -18,7 +18,6 @@ class BinaryImageDecoder(Decoder):
         super(BinaryImageDecoder, self).__init__()
         self.nz = nz
         self.ngpu = ngpu
-        self.core = nn.Module()
 
     @overrides
     def z_shape(self) -> Tuple:
@@ -39,7 +38,7 @@ class BinaryImageDecoder(Decoder):
             the probability matrix of each pixel shape=[batch, x_shape]
 
         """
-        img_probs = self.core(z)
+        img_probs = self(z)
         img = torch.bernoulli(img_probs) if random_sample else torch.ge(img_probs, 0.5).float()
         return img, img_probs
 
@@ -60,7 +59,7 @@ class BinaryImageDecoder(Decoder):
         z_size = z.size()
         batch_size, nsampels = z_size[:2]
         # [batch * nsamples, x_shape] --> [batch, nsamples, -1]
-        recon_x = self.core(z.view(batch_size * nsampels, *z_size[2:])).view(batch_size, nsampels, -1)
+        recon_x = self(z.view(batch_size * nsampels, *z_size[2:])).view(batch_size, nsampels, -1)
         # [batch, -1]
         x_flat = x.view(batch_size, -1)
         BCE = (recon_x + eps).log() * x_flat.unsqueeze(1) + (1.0 - recon_x + eps).log() * (1. - x_flat).unsqueeze(1)

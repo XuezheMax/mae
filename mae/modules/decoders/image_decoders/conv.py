@@ -46,6 +46,9 @@ class ConvDecoderBinaryImage28x28(BinaryImageDecoder):
                 nn.init.normal_(m.weight, 1.0, 0.02)
                 nn.init.constant_(m.bias, 0)
 
+    def forward(self, z):
+        return self.core(z)
+
     @classmethod
     def from_params(cls, params: Dict) -> "ConvDecoderBinaryImage28x28":
         return ConvDecoderBinaryImage28x28(**params)

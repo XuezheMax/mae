@@ -21,11 +21,10 @@ class ColorImageDecoder(Decoder):
         self.nc = 3
         self.nmix = nmix
         self.ngpu = ngpu
-        self.core = nn.Module()
 
     def execute(self, z, x=None):
         # [batch, (2 * nc + 4) * nmix, H, W]
-        output = self.core(x, z)
+        output = self(x, z)
 
         # [batch, mix, H, W]
         logit_probs = output[:, :self.nmix]

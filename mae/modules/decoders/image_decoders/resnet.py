@@ -41,6 +41,8 @@ class ResnetDecoderBinaryImage28x28(BinaryImageDecoder):
         nn.init.constant_(m.weight, 1)
         nn.init.constant_(m.bias, 0)
 
+    def forward(self, z):
+        return self.core(z)
 
     @classmethod
     def from_params(cls, params: Dict) -> "ResnetDecoderBinaryImage28x28":
@@ -121,6 +123,9 @@ class ResnetDecoderColorImage32x32(ColorImageDecoder):
     @overrides
     def z_shape(self) -> Tuple:
         return self.z_channels, self.H, self.W
+
+    def forward(self, x, z):
+        return self.core(z)
 
     @classmethod
     def from_params(cls, params: Dict) -> "ResnetDecoderColorImage32x32":
