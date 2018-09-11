@@ -5,4 +5,4 @@ from mae.modules.decoders.image_decoders.color_image_decoder import ColorImageDe
 from mae.modules.decoders.image_decoders.conv import ConvDecoderBinaryImage28x28
 from mae.modules.decoders.image_decoders.resnet import ResnetDecoderBinaryImage28x28, ResnetDecoderColorImage32x32
 from mae.modules.decoders.image_decoders.pixelcnn import PixelCNNDecoderBinaryImage28x28
-
+from mae.modules.decoders.image_decoders.pixelcnnpp import PixelCNNPPDecoderColorImage32x32
