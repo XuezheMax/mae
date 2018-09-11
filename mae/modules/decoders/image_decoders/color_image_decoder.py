@@ -45,11 +45,12 @@ class ColorImageDecoder(Decoder):
         batch, nmix, H, W = logit_probs.size()
 
         # [batch, nc * mix, H, W] --> [batch, mix, nc, H, W]
-        mu = torch.tanh(output[:, nmix:(self.nc + 1) * nmix].view(batch, nmix, self.nc, H, W))
-        log_scale = output[:, (self.nc + 1) * nmix:(self.nc * 2 + 1) * nmix].view(batch, nmix, self.nc, H, W).clamp(min=-7.0)
-        coeffs = torch.tanh(output[:, (self.nc * 2 + 1) * nmix:(self.nc * 2 + 4) * nmix].view(batch, nmix, self.nc, H, W))
+        bin_size = 1. / 255
+        mu = output[:, nmix:(self.nc + 1) * nmix].view(batch, nmix, self.nc, H, W)
+        log_scale = output[:, (self.nc + 1) * nmix:(self.nc * 2 + 1) * nmix].view(batch, nmix, self.nc, H, W)
+        coeffs = output[:, (self.nc * 2 + 1) * nmix:(self.nc * 2 + 4) * nmix].view(batch, nmix, self.nc, H, W)
 
-        return mu, log_scale, F.log_softmax(logit_probs, dim=1), coeffs
+        return mu.tanh() * (1. + bin_size), log_scale.tanh() * 7., F.log_softmax(logit_probs, dim=1), coeffs.tanh()
 
     @overrides
     def decode(self, z, random_sample):
