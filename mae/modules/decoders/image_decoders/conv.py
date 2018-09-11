@@ -1,6 +1,7 @@
 __author__ = 'max'
 
-from typing import Dict
+from typing import Dict, Tuple
+from overrides import overrides
 import torch.nn as nn
 from mae.modules.decoders.image_decoders.binary_image_decoder import BinaryImageDecoder
 
@@ -48,6 +49,15 @@ class ConvDecoderBinaryImage28x28(BinaryImageDecoder):
 
     def forward(self, z):
         return self.core(z)
+
+    @overrides
+    def output_size(self) -> Tuple:
+        """
+
+        Returns: a tuple of the output shape of decoded x (excluding batch_size)
+
+        """
+        return 1, 28, 28
 
     @classmethod
     def from_params(cls, params: Dict) -> "ConvDecoderBinaryImage28x28":

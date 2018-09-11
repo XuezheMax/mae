@@ -1,6 +1,6 @@
 __author__ = 'max'
 
-from typing import Dict
+from typing import Dict, Tuple
 from overrides import overrides
 import torch
 import torch.nn as nn
@@ -22,7 +22,20 @@ class ColorImageDecoder(Decoder):
         self.nmix = nmix
         self.ngpu = ngpu
 
-    def execute(self, z, x=None):
+    @overrides
+    def z_shape(self) -> Tuple:
+        raise NotImplementedError
+
+    @overrides
+    def output_size(self) -> Tuple:
+        """
+
+        Returns: a tuple of the output shape of decoded x (excluding batch_size)
+
+        """
+        raise NotImplementedError
+
+    def execute(self, z, x):
         # [batch, (2 * nc + 4) * nmix, H, W]
         output = self(x, z)
 
@@ -34,17 +47,9 @@ class ColorImageDecoder(Decoder):
         # [batch, nc * mix, H, W] --> [batch, mix, nc, H, W]
         mu = output[:, nmix:(self.nc + 1) * nmix].view(batch, nmix, self.nc, H, W)
         log_scale = output[:, (self.nc + 1) * nmix:(self.nc * 2 + 1) * nmix].view(batch, nmix, self.nc, H, W).clamp(min=-7.0)
-        if x is not None:
-            coeffs = torch.tanh(output[:, (self.nc * 2 + 1) * nmix:(self.nc * 2 + 4) * nmix].view(batch, nmix, self.nc, H, W))
-            # [batch, mix, H, W] -> [batch, mix, 1, H, W]
-            mean0 = mu[:, :, 0]
-            mean1 = (mu[:, :, 1] + coeffs[:, :, 0] * x[:, 0].unsqueeze(1))
-            mean2 = (mu[:, :, 2] + coeffs[:, :, 1] * x[:, 0].unsqueeze(1) + coeffs[:, :, 2] * x[:, 1].unsqueeze(1))
-            means = torch.stack([mean0, mean1, mean2], dim=2)
-        else:
-            means = mu
+        coeffs = torch.tanh(output[:, (self.nc * 2 + 1) * nmix:(self.nc * 2 + 4) * nmix].view(batch, nmix, self.nc, H, W))
 
-        return means, log_scale, F.log_softmax(logit_probs, dim=1)
+        return mu, log_scale, F.log_softmax(logit_probs, dim=1), coeffs
 
     @overrides
     def decode(self, z, random_sample):
@@ -61,9 +66,10 @@ class ColorImageDecoder(Decoder):
             the probability matrix of each pixel shape=[batch, x_shape] Note: for RGB image we do not compute the probability (None)
 
         """
+        x = None
         # [batch, mix, nc, H, W]
-        mu, log_scale, logit_probs = self.execute(z)
-        return sample_from_discretized_mix_logistic(mu, log_scale, logit_probs, random_sample), None
+        mu, log_scale, logit_probs, coeffs = self.execute(z, x)
+        return sample_from_discretized_mix_logistic(mu, log_scale, coeffs, logit_probs, random_sample), None
 
     @overrides
     def reconstruct_error(self, x, z):
@@ -82,10 +88,11 @@ class ColorImageDecoder(Decoder):
         z_size = z.size()
         batch_size, nsampels = z_size[:2]
         # [batch * nsamples, mix, x_shape]
-        mu, log_scale, logit_probs = self.execute(z.view(batch_size * nsampels, *z_size[2:]))
+        mu, log_scale, logit_probs, coeffs = self.execute(z.view(batch_size * nsampels, *z_size[2:]), x)
         # [batch, nsamples, mix, x_shape]
         mu = mu.view(batch_size, nsampels, *mu.size()[1:])
         log_scale = log_scale.view(batch_size, nsampels, *log_scale.size()[1:])
+        coeffs = coeffs.view(batch_size, nsampels, *coeffs.size()[1:])
         logit_probs = logit_probs.view(batch_size, nsampels, *logit_probs.size()[1:])
 
         bin_size = 1. / 255.
@@ -93,7 +100,7 @@ class ColorImageDecoder(Decoder):
         upper = 1.0 - 1. / 255.
         # [batch, nc, H, W] --> [batch, 1, nc, H, W] --> [batch, 1, 1, nc, H, W]
         x_reshape = x.unsqueeze(1).unsqueeze(1)
-        return discretized_mix_logistic_loss(x_reshape, mu, log_scale, bin_size, lower, upper, logit_probs)
+        return discretized_mix_logistic_loss(x_reshape, mu, log_scale, coeffs, bin_size, lower, upper, logit_probs)
 
     @overrides
     def log_probability(self, x, z):

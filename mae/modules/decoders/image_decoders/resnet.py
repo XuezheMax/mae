@@ -44,6 +44,15 @@ class ResnetDecoderBinaryImage28x28(BinaryImageDecoder):
     def forward(self, z):
         return self.core(z)
 
+    @overrides
+    def output_size(self) -> Tuple:
+        """
+
+        Returns: a tuple of the output shape of decoded x (excluding batch_size)
+
+        """
+        return 1, 28, 28
+
     @classmethod
     def from_params(cls, params: Dict) -> "ResnetDecoderBinaryImage28x28":
         return ResnetDecoderBinaryImage28x28(**params)
@@ -80,8 +89,8 @@ class ResnetDecoderColorImage32x32(ColorImageDecoder):
             # state [48, 32, 32]
             DeResNet(48, [48, 48], [1, 1], [0, 0]),
             # state [48, 32, 32]
-            nn.Conv2d(48, (self.nc * 2 + 1) * self.nmix, 1, bias=False)
-            # state [(nc * 2 + 1) * nmix, 32, 32]
+            nn.Conv2d(48, (self.nc * 3 + 1) * self.nmix, 1, bias=False)
+            # state [(nc * 3 + 1) * nmix, 32, 32]
         )
         self.reset_parameters()
 
@@ -123,6 +132,15 @@ class ResnetDecoderColorImage32x32(ColorImageDecoder):
     @overrides
     def z_shape(self) -> Tuple:
         return self.z_channels, self.H, self.W
+
+    @overrides
+    def output_size(self) -> Tuple:
+        """
+
+        Returns: a tuple of the output shape of decoded x (excluding batch_size)
+
+        """
+        return self.nc, 32, 32
 
     def forward(self, x, z):
         return self.core(z)

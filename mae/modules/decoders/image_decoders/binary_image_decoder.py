@@ -24,6 +24,15 @@ class BinaryImageDecoder(Decoder):
         return self.nz, 1, 1
 
     @overrides
+    def output_size(self) -> Tuple:
+        """
+
+        Returns: a tuple of the output shape of decoded x (excluding batch_size)
+
+        """
+        raise NotImplementedError
+
+    @overrides
     def decode(self, z, random_sample):
         """
         This decoding method only fits to independent distributions, not for auto-regressive decoders

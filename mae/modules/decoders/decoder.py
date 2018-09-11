@@ -14,6 +14,19 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
 
     def z_shape(self) -> Tuple:
+        """
+
+        Returns: the shape of input z
+
+        """
+        raise NotImplementedError
+
+    def output_size(self) -> Tuple:
+        """
+
+        Returns: a tuple of the output shape of decoded x (excluding batch_size)
+
+        """
         raise NotImplementedError
 
     def decode(self, z, random_sample):

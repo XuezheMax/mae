@@ -88,6 +88,15 @@ class PixelCNNDecoderBinaryImage28x28(BinaryImageDecoder):
         return self.nz,
 
     @overrides
+    def output_size(self) -> Tuple:
+        """
+
+        Returns: a tuple of the output shape of decoded x (excluding batch_size)
+
+        """
+        return self.nc, 28, 28
+
+    @overrides
     def decode(self, z, random_sample):
         """
         This decoding method only fits to independent distributions, not for auto-regressive decoders

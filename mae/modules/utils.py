@@ -58,13 +58,14 @@ def logavgexp(x, dim=None):
         return xmax_ + torch.log(torch.exp(x - xmax).sum(dim)) - np.log(nsize)
 
 
-def discretized_mix_logistic_loss(x, means, logscales, bin_size, lower, upper, logit_probs):
+def discretized_mix_logistic_loss(x, means, logscales, coeffs, bin_size, lower, upper, logit_probs):
     """
 
     Args:
         x: [batch, 1, 1, nc, H, W]
         means: [batch, nsamples, nmix, nc, H, W]
         logscales: [batch, nsamples, nmix, nc, H, W]
+        coeffs: [batch, nsamples, nmix, nc, H, W]
         bin_size: float
         lower: float
         upper: float
@@ -75,6 +76,12 @@ def discretized_mix_logistic_loss(x, means, logscales, bin_size, lower, upper, l
 
     """
     eps = 1e-12
+    # [batch, nsamples, mix, H, W]
+    mean0 = means[:, :, :, 0]
+    mean1 = means[:, :, :, 1] + coeffs[:, :, :, 0] * x[:, :, :, 0]
+    mean2 = means[:, :, :, 2] + coeffs[:, :, :, 1] * x[:, :, :, 0] + coeffs[:, :, :, 2] * x[:, :, :, 1]
+    # [batch, nsamples, mix, nc, H, W]
+    means = torch.stack([mean0, mean1, mean2], dim=3)
     # [batch, nsamples, nmix, nc, H, W]
     centered_x = x - means
     if isinstance(logscales, float):
@@ -116,14 +123,14 @@ def discretized_mix_logistic_loss(x, means, logscales, bin_size, lower, upper, l
 
 
 
-def sample_from_discretized_mix_logistic(means, logscales, logit_probs, random_sample):
+def sample_from_discretized_mix_logistic(means, logscales, coeffs, logit_probs, random_sample):
     """
 
     Args:
         means: [batch, nmix, nc, H, W]
         logscales: [batch, nmix, nc, H, W]
-        logit_probs:, [batch, nmix, H, W]
         coeffs: [batch, nmix, nc, H, W]
+        logit_probs:, [batch, nmix, H, W]
         random_sample: boolean
 
     Returns:
@@ -138,10 +145,15 @@ def sample_from_discretized_mix_logistic(means, logscales, logit_probs, random_s
     # [batch, nc, H, W]
     means = (means * one_hot).sum(dim=1)
     logscales = (logscales * one_hot).sum(dim=1)
+    coeffs = (coeffs * one_hot).sum(dim=1)
 
     x = means
     if random_sample:
         u = means.new_zeros(means.size()).uniform_(1e-5, 1 - 1e-5)
         x = x + logscales.exp() * (torch.log(u) - torch.log(1.0 - u))
-
+    # [batch, H, W]
+    x0 = means[:, 0]
+    x1 = means[:, 1] + coeffs[:, 0] * x[:, 0]
+    x2 = means[:, 2] + coeffs[:, 1] * x[:, 0] + coeffs[: 2] * x[:, 1]
+    x = torch.stack([x0, x1, x2], dim=1)
     return x
