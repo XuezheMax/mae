@@ -91,7 +91,9 @@ class ColorImageDecoder(Decoder):
         bin_size = 1. / 255.
         lower = 1. / 255. - 1.0
         upper = 1.0 - 1. / 255.
-        return discretized_mix_logistic_loss(x, mu, log_scale, bin_size, lower, upper, logit_probs)
+        # [batch, nc, H, W] --> [batch, 1, nc, H, W] --> [batch, 1, 1, nc, H, W]
+        x_reshape = x.unsqueeze(1).unsqueeze(1)
+        return discretized_mix_logistic_loss(x_reshape, mu, log_scale, bin_size, lower, upper, logit_probs)
 
     @overrides
     def log_probability(self, x, z):
