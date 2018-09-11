@@ -152,8 +152,8 @@ def sample_from_discretized_mix_logistic(means, logscales, coeffs, logit_probs, 
         u = means.new_zeros(means.size()).uniform_(1e-5, 1 - 1e-5)
         x = x + logscales.exp() * (torch.log(u) - torch.log(1.0 - u))
     # [batch, H, W]
-    x0 = means[:, 0]
-    x1 = means[:, 1] + coeffs[:, 0] * x[:, 0]
-    x2 = means[:, 2] + coeffs[:, 1] * x[:, 0] + coeffs[: 2] * x[:, 1]
+    x0 = x[:, 0].clamp(min=-1., max=1.)
+    x1 = (x[:, 1] + coeffs[:, 0] * x0).clamp(min=-1., max=1.)
+    x2 = (x[:, 2] + coeffs[:, 1] * x0 + coeffs[: 2] * x1).clamp(min=-1., max=1.)
     x = torch.stack([x0, x1, x2], dim=1)
     return x

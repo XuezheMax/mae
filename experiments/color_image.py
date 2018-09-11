@@ -218,7 +218,7 @@ def reconstruct():
     reorder_index = torch.from_numpy(np.array([[i + j * n for j in range(2)] for i in range(n)])).view(-1)
     comparison = comparison[reorder_index]
     image_file = 'reconstruct.png'
-    save_image(comparison, os.path.join(result_path, image_file), nrow=16, normalize=True)
+    save_image(comparison, os.path.join(result_path, image_file), nrow=16, normalize=True, scale_each=True, range=(-1, 1))
 
 
 def calc_nll():
@@ -304,7 +304,7 @@ with torch.no_grad():
     sample_z, _ = mae.sample_from_proir(256, device=device)
     sample_x, _ = mae.decode(sample_z, random_sample=True)
     image_file = 'sample.png'
-    save_image(sample_x.cpu(), os.path.join(result_path, image_file), nrow=16, normalize=True)
+    save_image(sample_x.cpu(), os.path.join(result_path, image_file), nrow=16, normalize=True, scale_each=True, range=(-1, 1))
 
     print('Final val:')
     eval(train_data, val_index)
