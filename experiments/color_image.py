@@ -111,9 +111,7 @@ max_decay = 6
 
 
 def train(epoch):
-    print(scheduler.get_lr())
-    input()
-    print('Epoch: %d lr=%.6f, decay rate=%.2f (schedule=%d, patient=%d, decay=%d)' % (epoch, lr, decay_rate, schedule, patient, decay))
+    print('Epoch: %d lr=%.6f, decay rate=%.2f (schedule=%d, patient=%d, decay=%d)' % (epoch, scheduler.get_lr()[0], decay_rate, schedule, patient, decay))
     mae.train()
     recon_loss = 0
     kl_loss = 0
