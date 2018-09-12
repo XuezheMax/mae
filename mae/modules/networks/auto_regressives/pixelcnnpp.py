@@ -299,17 +299,21 @@ class PixelCNNPP(nn.Module):
             h = up_h(h)
             up_pass.append((x1, x2))
 
-        # pop the last element.
-        up_pass.pop()
-        assert len(up_pass) == len(self.nins1), '%d, %d' % (len(up_pass), len(self.nins1))
+        # assert len(up_pass) == len(self.nins1), '%d, %d' % (len(up_pass), len(self.nins1))
 
-        for layer, down_h, nin1, nin2 in zip(self.down_layers, self.down_hs, self.nins1, self.nins2):
+        for l, (layer, down_h, nin1, nin2) in enumerate(zip(self.down_layers, self.down_hs, self.nins1, self.nins2)):
             u1, u2 = up_pass.pop()
             print(u1.size(), x1.size())
             print(u2.size(), x2.size())
             print('-------------------')
-            x1 = nin1(x1, u1)
-            x2 = nin2(x2, u2)
+            if l == 0:
+                print(x1.eq(u1))
+                input()
+                x1 = u1
+                x2 = u2
+            else:
+                x1 = nin1(x1, u1)
+                x2 = nin2(x2, u2)
             x1, x2 = layer(x1, x2, h)
             h = down_h(h)
 
