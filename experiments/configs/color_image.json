@@ -10,7 +10,7 @@
   "decoder": {
     "type": "pixelcnn++_color_32x32",
     "z_channels": 16,
-    "h_channels": 2,
+    "h_channels": 16,
     "nmix": 5,
     "dropout": 0.5,
     "ngpu": 1

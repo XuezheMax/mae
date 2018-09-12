@@ -150,7 +150,7 @@ def train(epoch):
             sys.stdout.write("\b" * num_back)
             train_loss = recon_loss / num_insts + kl_loss / num_insts + pkl_mean_loss / num_batches + pkl_std_loss / num_batches
             log_info = '[{}/{} ({:.0f}%)] Loss: {:.2f} (recon: {:.2f}, kl: {:.2f}, pkl (mean, std): {:.2f}, {:.2f}, pkl_loss (mean, std): {:.2f}, {:.2f})'.format(
-                batch_idx * batch_size, len(train_data), 100. * num_insts / len(train_data),
+                batch_idx * batch_size, len(train_index), 100. * num_insts / len(train_index),
                 train_loss, recon_loss / num_insts, kl_loss / num_insts,
                 pkl_mean / num_batches, pkl_std / num_batches,
                 pkl_mean_loss / num_batches, pkl_std_loss / num_batches)
