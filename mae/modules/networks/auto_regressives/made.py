@@ -1,7 +1,8 @@
 __author__ = 'max'
 
 import torch.nn as nn
-from mae.modules.networks.masked import MaskedLinear, MaskedLinearWeightNorm
+from torch.nn.modules.utils import _pair
+from mae.modules.networks.masked import MaskedLinear, MaskedLinearWeightNorm, MaskedConv2dwithWeightNorm
 
 
 class MADE(nn.Module):
@@ -52,3 +53,26 @@ class MADE(nn.Module):
         for hidden_layer in self.hidden_layers:
             output = self.activation(hidden_layer(output))
         return self.output_layer(output) + self.direct_connect(x)
+
+
+class MADE2d(nn.Module):
+    """
+    The MADE2d model.
+    """
+
+    def __init__(self, in_channels, kernel_size, mask_type, order, bias=True):
+        """
+
+        Args:
+            in_channels: int
+                number of channels
+            kernel_size: int or tuple
+                kernel size
+            mask_type: 'A' or 'B'
+            order: 'A' or 'B'
+            bias: using bias (default=True)
+        """
+        super(MADE2d, self).__init__()
+        kH, kW = _pair(kernel_size)
+        padding = (kH // 2, kW // 2)
+        self.conv = MaskedConv2dwithWeightNorm(mask_type, order, in_channels, in_channels, kernel_size, padding=padding)

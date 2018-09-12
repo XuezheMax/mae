@@ -100,6 +100,8 @@ print(args)
 
 lr = args.lr
 optimizer = optim.Adam(mae.parameters(), lr=lr)
+step_decay = 0.999995
+scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
 decay_rate = 0.5
 schedule = args.schedule
 
@@ -109,6 +111,8 @@ max_decay = 6
 
 
 def train(epoch):
+    print(scheduler.get_lr())
+    input()
     print('Epoch: %d lr=%.6f, decay rate=%.2f (schedule=%d, patient=%d, decay=%d)' % (epoch, lr, decay_rate, schedule, patient, decay))
     mae.train()
     recon_loss = 0
@@ -130,6 +134,7 @@ def train(epoch):
         loss.backward()
         clip_grad_norm_(mae.parameters(), 5.0)
         optimizer.step()
+        scheduler.step()
 
         with torch.no_grad():
             num_insts += batch_size
@@ -284,6 +289,7 @@ for epoch in range(1, args.epochs + 1):
         mae.load_state_dict(torch.load(model_name))
         lr = lr * decay_rate
         optimizer = optim.Adam(mae.parameters(), lr=lr)
+        scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
         patient = 0
         decay +=1
     else:
