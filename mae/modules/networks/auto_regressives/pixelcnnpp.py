@@ -296,8 +296,10 @@ class PixelCNNPP(nn.Module):
                 x1, x2 = layer(input)
             else:
                 x1, x2 = layer(x1, x2, h=h)
+                up_pass.append((x1, x2))
             h = up_h(h)
-            up_pass.append((x1, x2))
+
+        # assert len(up_pass) == len(self.nins1), '%d, %d' % (len(up_pass), len(self.nins1))
 
         for l, (layer, down_h, nin1, nin2) in enumerate(zip(self.down_layers, self.down_hs, self.nins1, self.nins2)):
             u1, u2 = up_pass.pop()
