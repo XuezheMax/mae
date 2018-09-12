@@ -50,7 +50,7 @@ class ColorImageDecoder(Decoder):
         coeffs = output[:, (self.nc * 2 + 1) * nmix:(self.nc * 2 + 4) * nmix].view(batch, nmix, self.nc, H, W)
 
         bound = 1 + 1. / 255
-        return mu.clamp(min=-bound, max=bound), log_scale.clamp(min=-7.), F.log_softmax(logit_probs, dim=1), coeffs.tanh()
+        return mu.tanh() * bound, log_scale.clamp(min=-7.), F.log_softmax(logit_probs, dim=1), coeffs.tanh()
 
     @overrides
     def decode(self, z, random_sample):
@@ -88,13 +88,13 @@ class ColorImageDecoder(Decoder):
         # [batch, mix, nc, H, W]
         z_size = z.size()
         batch_size, nsampels = z_size[:2]
-        # [batch, nc, 32, 32] --> [batch, 1, nc, 32, 32] --> [batch, nsample, nc, 32, 32]
-        x = x.unsqueeze(1).expand(batch_size, nsampels, *x.size()[1:])
-        # [batch, nsample, nc, 32, 32] --> [batch * nsamples, nc, 32, 32]
-        x = x.view(-1, *x.size()[2:])
+        # [batch * nsamples]
+        index = torch.cat([x.new_ones(nsampels) * i for i in range(batch_size)], dim=0).long()
+        # [batch * nsamples, nc, 32, 32]
+        x_expand = x.index_select(0, index)
 
         # [batch * nsamples, mix, x_shape]
-        mu, log_scale, logit_probs, coeffs = self.execute(z.view(batch_size * nsampels, *z_size[2:]), x)
+        mu, log_scale, logit_probs, coeffs = self.execute(z.view(batch_size * nsampels, *z_size[2:]), x_expand)
         # [batch, nsamples, mix, x_shape]
         mu = mu.view(batch_size, nsampels, *mu.size()[1:])
         log_scale = log_scale.view(batch_size, nsampels, *log_scale.size()[1:])
