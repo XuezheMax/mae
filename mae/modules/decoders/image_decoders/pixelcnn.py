@@ -60,6 +60,7 @@ class PixelCNNDecoderBinaryImage28x28(BinaryImageDecoder):
             self.core = nn.DataParallel(self.core, device_ids=list(range(ngpu)))
 
     def reset_parameters(self):
+        # //////// z_transform //////////
         m = self.z_transform[0]
         assert isinstance(m, nn.Linear)
         nn.init.xavier_uniform_(m.weight)
@@ -70,6 +71,7 @@ class PixelCNNDecoderBinaryImage28x28(BinaryImageDecoder):
         nn.init.constant_(m.weight, 1)
         nn.init.constant_(m.bias, 0)
 
+        # //////// core //////////
         m = self.core[1]
         assert isinstance(m, nn.Conv2d)
         nn.init.xavier_normal_(m.weight)

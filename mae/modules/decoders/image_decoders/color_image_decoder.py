@@ -88,6 +88,11 @@ class ColorImageDecoder(Decoder):
         # [batch, mix, nc, H, W]
         z_size = z.size()
         batch_size, nsampels = z_size[:2]
+        # [batch, nc, 32, 32] --> [batch, 1, nc, 32, 32] --> [batch, nsample, nc, 32, 32]
+        x = x.unsqueeze(1).expand(batch_size, nsampels, *x.size()[1:])
+        # [batch, nsample, nc, 32, 32] --> [batch * nsamples, nc, 32, 32]
+        x = x.view(-1, *x.size()[2:])
+
         # [batch * nsamples, mix, x_shape]
         mu, log_scale, logit_probs, coeffs = self.execute(z.view(batch_size * nsampels, *z_size[2:]), x)
         # [batch, nsamples, mix, x_shape]

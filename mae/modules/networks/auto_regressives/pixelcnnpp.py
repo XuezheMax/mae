@@ -195,6 +195,40 @@ class Identity(nn.Module):
         return input
 
 
+class DownSampling(nn.Module):
+    def __init__(self, num_filters):
+        super(DownSampling, self).__init__()
+        self.conv = nn.Conv2d(num_filters, num_filters * 2, kernel_size=(3, 3), stride=(2, 2), padding=1)
+        self.bn = nn.BatchNorm2d(num_filters * 2)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        nn.init.xavier_normal_(self.conv.weight)
+
+        nn.init.constant_(self.bn.weight, 1)
+        nn.init.constant_(self.bn.bias, 0)
+
+    def forward(self, x):
+        return F.elu(self.bn(self.conv(x)))
+
+
+class UpSampling(nn.Module):
+    def __init__(self, num_filters):
+        super(UpSampling, self).__init__()
+        self.deconv = nn.ConvTranspose2d(num_filters, num_filters // 2, kernel_size=(3, 3), stride=(2, 2), padding=1, output_padding=1)
+        self.bn = nn.BatchNorm2d(num_filters // 2)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        nn.init.xavier_normal_(self.deconv.weight)
+
+        nn.init.constant_(self.bn.weight, 1)
+        nn.init.constant_(self.bn.bias, 0)
+
+    def forward(self, x):
+        return F.elu(self.bn(self.deconv(x)))
+
+
 class PixelCNNPP(nn.Module):
     def __init__(self, levels, in_channels, out_channels, num_resnets, h_channels=0, dropout=0.0):
         super(PixelCNNPP, self).__init__()
@@ -214,7 +248,7 @@ class PixelCNNPP(nn.Module):
                 nins1.append(NINBlock(out_channels))
                 nins2.append(NINBlock(out_channels))
                 if h_channels:
-                    up_hs.append(nn.Conv2d(h_channels, h_channels * 2, kernel_size=(3, 3), stride=(2, 2), padding=1))
+                    up_hs.append(DownSampling(h_channels))
                     h_channels = h_channels * 2
                 else:
                     up_hs.append(Identity())
@@ -236,7 +270,7 @@ class PixelCNNPP(nn.Module):
             if l < levels - 1:
                 down_layers.append(UpSamplingBlock(out_channels))
                 if h_channels:
-                    down_hs.append(nn.ConvTranspose2d(h_channels, h_channels // 2, kernel_size=(3, 3), stride=(2, 2), padding=1, output_padding=1))
+                    down_hs.append(UpSampling(h_channels))
                     h_channels = h_channels // 2
                 else:
                     down_hs.append(Identity())
