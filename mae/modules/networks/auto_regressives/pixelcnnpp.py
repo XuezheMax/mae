@@ -307,7 +307,7 @@ class PixelCNNPP(nn.Module):
             u1, u2 = up_pass.pop()
             print(u1.size(), x1.size())
             print(u2.size(), x2.size())
-            input()
+            print('-------------------')
             x1 = nin1(x1, u1)
             x2 = nin2(x2, u2)
             x1, x2 = layer(x1, x2, h)
