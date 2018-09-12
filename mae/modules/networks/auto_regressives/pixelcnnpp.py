@@ -27,7 +27,7 @@ class GatedResnetBlock(nn.Module):
 
         if h_channels:
             self.h_conv = nn.Conv2d(h_channels, 2 * in_channels, kernel_size=(3, 3), padding=1)
-            self.h_bn = nn.BatchNorm2d(in_channels)
+            self.h_bn = nn.BatchNorm2d(2 * in_channels)
         else:
             self.h_conv = None
             self.h_bn = None
