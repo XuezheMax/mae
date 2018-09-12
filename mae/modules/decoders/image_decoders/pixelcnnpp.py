@@ -83,7 +83,7 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
         nn.init.constant_(m.weight, 1)
         nn.init.constant_(m.bias, 0)
 
-        m = self.z_transform[5]
+        m = self.z_transform[6]
         assert isinstance(m, nn.Conv2d)
         nn.init.xavier_normal_(m.weight)
 

@@ -12,6 +12,7 @@
     "z_channels": 16,
     "h_channels": 2,
     "nmix": 5,
+    "dropout": 0.5,
     "ngpu": 1
   }
 }
