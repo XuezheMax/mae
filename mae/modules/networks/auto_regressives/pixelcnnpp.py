@@ -107,7 +107,7 @@ class TopShitBlock(nn.Module):
         return torch.cat([input.new_zeros(batch_size, channels, 1, W), input[:, :, :H-1, :]], dim=2)
 
     @staticmethod
-    def right_shift(self, input):
+    def right_shift(input):
         batch_size, channels, H, W = input.size()
         return torch.cat([input.new_zeros(batch_size, channels, H, 1), input[:, :, :, :W-1]], dim=3)
 
