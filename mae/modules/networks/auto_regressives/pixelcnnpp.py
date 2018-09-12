@@ -299,7 +299,9 @@ class PixelCNNPP(nn.Module):
             h = up_h(h)
             up_pass.append((x1, x2))
 
-        assert len(up_pass) == len(self.nins1), '(%d,%d), %d' % (len(up_pass), len(self.up_hs), len(self.nins1))
+        # pop the last element.
+        up_pass.pop()
+        assert len(up_pass) == len(self.nins1), '%d, %d' % (len(up_pass), len(self.nins1))
 
         for layer, down_h, nin1, nin2 in zip(self.down_layers, self.down_hs, self.nins1, self.nins2):
             u1, u2 = up_pass.pop()
