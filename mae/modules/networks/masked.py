@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import Parameter
+from torch.nn.modules.utils import _pair
 
 from mae.modules.utils import norm
 
@@ -181,6 +182,86 @@ class MaskedConv2d(nn.Conv2d):
     def forward(self, input):
         return F.conv2d(input, self.weight * self.mask, self.bias, self.stride,
                         self.padding, self.dilation, self.groups)
+
+
+class MaskedConv2dwithWeightNorm(nn.Module):
+    """
+    Conv2d with mask and weight normalization for MADE2d.
+    """
+
+    def __init__(self, mask_type, order, in_channels, out_channels, kernel_size, stride=1,
+                 padding=0, dilation=1, groups=1, bias=True):
+        super(MaskedConv2dwithWeightNorm, self).__init__()
+        assert mask_type in {'A', 'B'}
+        assert order in {'A', 'B'}
+        self.mask_type = mask_type
+        self.order = order
+        kernel_size = _pair(kernel_size)
+        stride = _pair(stride)
+        padding = _pair(padding)
+        dilation = _pair(dilation)
+
+        if in_channels % groups != 0:
+            raise ValueError('in_channels must be divisible by groups')
+        if out_channels % groups != 0:
+            raise ValueError('out_channels must be divisible by groups')
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.dilation = dilation
+        self.groups = groups
+
+        self.weight_v = Parameter(torch.Tensor(out_channels, in_channels // groups, *kernel_size))
+        self.weight_g = Parameter(torch.Tensor(out_channels, 1, 1, 1))
+        if bias:
+            self.bias = Parameter(torch.Tensor(out_channels))
+        else:
+            self.register_parameter('bias', None)
+
+        self.register_buffer('mask', torch.ones(self.weight_v.size()))
+        _, _, kH, kW = self.weight_v.size()
+        mask = np.ones([*self.mask.size()], dtype=np.float32)
+        mask[:, :, kH // 2, kW // 2 + (mask_type == 'B'):] = 0
+        mask[:, :, kH // 2 + 1:] = 0
+
+        # reverse order
+        if order == 'B':
+            reverse_mask = mask[:, :, ::-1, :]
+            reverse_mask = reverse_mask[:, :, :, ::-1]
+            mask = reverse_mask.copy()
+        self.mask.copy_(torch.from_numpy(mask).float())
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        nn.init.xavier_normal_(self.weight_v)
+        self.weight_v.data.mul_(self.mask)
+        _norm = norm(self.weight_v, 0).data + 1e-8
+        self.weight_g.data.copy_(_norm.log())
+        if self.bias is not None:
+            nn.init.constant_(self.bias, 0)
+
+    def forward(self, input):
+        self.weight_v.data.mul_(self.mask)
+        _norm = norm(self.weight_v, 0) + 1e-8
+        weight = self.weight_v * (self.weight_g.exp() / _norm)
+        return F.conv2d(input, weight, self.bias, self.stride,
+                        self.padding, self.dilation, self.groups)
+
+    def extra_repr(self):
+        s = ('{in_channels}, {out_channels}, kernel_size={kernel_size}'
+             ', stride={stride}')
+        if self.padding != (0,) * len(self.padding):
+            s += ', padding={padding}'
+        if self.dilation != (1,) * len(self.dilation):
+            s += ', dilation={dilation}'
+        if self.groups != 1:
+            s += ', groups={groups}'
+        if self.bias is None:
+            s += ', bias=False'
+        s += ', type={mask_type}, order={order}'
+        return s.format(**self.__dict__)
 
 
 class DownShiftConv2d(nn.Conv2d):
