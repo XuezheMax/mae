@@ -25,7 +25,7 @@ parser.add_argument('--batch-size', type=int, default=64, metavar='N', help='inp
 parser.add_argument('--epochs', type=int, default=1000, metavar='N', help='number of epochs to train (default: 10)')
 parser.add_argument('--seed', type=int, default=524287, metavar='S', help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=50, metavar='N', help='how many batches to wait before logging training status')
-parser.add_argument('--lr', type=float, default=0.0002, help='initial learning rate')
+parser.add_argument('--lr', type=float, default=0.0001, help='initial learning rate')
 parser.add_argument('--eta', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--gamma', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--schedule', type=int, default=10, help='schedule for learning rate decay')
@@ -99,7 +99,7 @@ mae = MAE.from_params(params).to(device)
 print(args)
 
 lr = args.lr
-optimizer = optim.Adamax(mae.parameters(), lr=lr)
+optimizer = optim.Adam(mae.parameters(), lr=lr)
 decay_rate = 0.5
 schedule = args.schedule
 

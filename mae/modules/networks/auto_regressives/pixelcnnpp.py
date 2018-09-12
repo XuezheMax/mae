@@ -305,6 +305,9 @@ class PixelCNNPP(nn.Module):
 
         for layer, down_h, nin1, nin2 in zip(self.down_layers, self.down_hs, self.nins1, self.nins2):
             u1, u2 = up_pass.pop()
+            print(u1.size(), x1.size())
+            print(u2.size(), x2.size())
+            input()
             x1 = nin1(x1, u1)
             x2 = nin2(x2, u2)
             x1, x2 = layer(x1, x2, h)
