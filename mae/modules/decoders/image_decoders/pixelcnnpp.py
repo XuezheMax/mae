@@ -11,6 +11,79 @@ from mae.modules.decoders.image_decoders.color_image_decoder import ColorImageDe
 from mae.modules.utils import sample_from_discretized_mix_logistic
 
 
+class _PixelCNNPPCore(nn.Module):
+    def __init__(self, z_channels, h_channels, nmix, dropout=0.):
+        super(_PixelCNNPPCore, self).__init__()
+        self.z_transform = nn.Sequential(
+            # state [b, z_channels, 8, 8]
+            nn.ConvTranspose2d(z_channels, z_channels // 2, 3, 2, 1, 1, bias=False),
+            nn.BatchNorm2d(z_channels // 2),
+            nn.ELU(),
+            # state [b, z_channels / 2, 16, 16]
+            nn.ConvTranspose2d(z_channels // 2, z_channels // 4, 3, 2, 1, 1, bias=False),
+            nn.BatchNorm2d(z_channels // 4),
+            nn.ELU(),
+            # state [b, z_channels / 4, 32, 32]
+            nn.Conv2d(z_channels // 4, h_channels, 1)
+            # state [b, h_channels, 32, 32]
+        )
+
+        hidden_channels = 64
+        self.core = PixelCNNPP(3, self.nc, hidden_channels, 5, h_channels, dropout=dropout)
+        self.output = nn.Sequential(
+            # state [64, 32, 32]
+            nn.Conv2d(hidden_channels, hidden_channels, 1, bias=False),
+            nn.BatchNorm2d(hidden_channels),
+            nn.ELU(),
+            # state [64, 32, 32]
+            nn.Conv2d(64, (self.nc * 3 + 1) * nmix, 1, bias=False)
+        )
+
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        # //////// z_transform //////////
+        m = self.z_transform[0]
+        assert isinstance(m, nn.ConvTranspose2d)
+        nn.init.xavier_normal_(m.weight)
+
+        m = self.z_transform[3]
+        assert isinstance(m, nn.ConvTranspose2d)
+        nn.init.xavier_normal_(m.weight)
+
+        m = self.z_transform[1]
+        assert isinstance(m, nn.BatchNorm2d)
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
+
+        m = self.z_transform[4]
+        assert isinstance(m, nn.BatchNorm2d)
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
+
+        m = self.z_transform[6]
+        assert isinstance(m, nn.Conv2d)
+        nn.init.xavier_normal_(m.weight)
+
+        # //////// output //////////
+        m = self.output[0]
+        assert isinstance(m, nn.Conv2d)
+        nn.init.xavier_normal_(m.weight)
+
+        m = self.output[3]
+        assert isinstance(m, nn.Conv2d)
+        nn.init.xavier_normal_(m.weight)
+
+        m = self.output[1]
+        assert isinstance(m, nn.BatchNorm2d)
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
+
+    def forward(self, x, z):
+        h = self.z_transform(z)
+        return self.output(self.core(x, h=h))
+
+
 class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
     """
     PixelCNN++ Deocder for color image of 32x32 resolution.
@@ -32,77 +105,9 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
         self.H = 8
         self.W = 8
 
-        z_transform = nn.Sequential(
-            # state [b, z_channels, 8, 8]
-            nn.ConvTranspose2d(z_channels, z_channels // 2, 3, 2, 1, 1, bias=False),
-            nn.BatchNorm2d(z_channels // 2),
-            nn.ELU(),
-            # state [b, z_channels / 2, 16, 16]
-            nn.ConvTranspose2d(z_channels // 2, z_channels // 4, 3, 2, 1, 1, bias=False),
-            nn.BatchNorm2d(z_channels // 4),
-            nn.ELU(),
-            # state [b, z_channels / 4, 32, 32]
-            nn.Conv2d(z_channels // 4, h_channels, 1)
-            # state [b, h_channels, 32, 32]
-        )
-
-        hidden_channels = 64
-        core = PixelCNNPP(3, self.nc, hidden_channels, 5, h_channels, dropout=dropout)
-        output = nn.Sequential(
-            # state [64, 32, 32]
-            nn.Conv2d(hidden_channels, hidden_channels, 1, bias=False),
-            nn.BatchNorm2d(hidden_channels),
-            nn.ELU(),
-            # state [64, 32, 32]
-            nn.Conv2d(64, (self.nc * 3 + 1) * self.nmix, 1, bias=False)
-        )
-
-        self.core = nn.ModuleList([z_transform, core, output])
-
-        self.reset_parameters()
-
+        self.core = _PixelCNNPPCore(z_channels, h_channels, nmix, dropout=dropout)
         if ngpu > 1:
             self.core = nn.DataParallel(self.core, device_ids=list(range(ngpu)))
-
-    def reset_parameters(self):
-        # //////// z_transform //////////
-        z_transform = self.core[0]
-        m = z_transform[0]
-        assert isinstance(m, nn.ConvTranspose2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = z_transform[3]
-        assert isinstance(m, nn.ConvTranspose2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = z_transform[1]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
-        m = z_transform[4]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
-        m = z_transform[6]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        # //////// output //////////
-        output = self.core[2]
-        m = output[0]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = output[3]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = output[1]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
 
     @overrides
     def z_shape(self) -> Tuple:
@@ -144,8 +149,7 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
         return x
 
     def forward(self, x, z):
-        h = self.core[0](z)
-        return self.core[2](self.core[1](x, h=h))
+        return self.core(x, z)
 
     @classmethod
     def from_params(cls, params: Dict) -> "PixelCNNPPDecoderColorImage32x32":
