@@ -71,7 +71,7 @@ class AF2dMADE(AF2d):
     def __init__(self, in_channels, height, width, num_blocks, kernel_size, num_hiddens=1, hidden_channels=None, hidden_kernels=None, bias=True, var=True):
         super(AF2dMADE, self).__init__(in_channels, height, width)
         hidden_channels = in_channels * 8 if hidden_channels is None else hidden_channels
-        hidden_kernels = [kernel_size] if hidden_kernels is None else hidden_kernels
+        hidden_kernels = [kernel_size] * num_hiddens if hidden_kernels is None else hidden_kernels
         self.blocks = []
         for i in range(num_blocks):
             block = AF2dMADEDualBlock(in_channels, kernel_size, num_hiddens, hidden_channels, hidden_kernels, bias=bias, var=var)
