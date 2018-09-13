@@ -36,7 +36,7 @@ class _PixelCNNPPCore(nn.Module):
             nn.BatchNorm2d(hidden_channels),
             nn.ELU(),
             # state [64, 32, 32]
-            nn.Conv2d(64, (self.nc * 3 + 1) * nmix, 1, bias=False)
+            nn.Conv2d(64, (nc * 3 + 1) * nmix, 1, bias=False)
         )
 
         self.reset_parameters()
