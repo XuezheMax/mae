@@ -93,7 +93,7 @@ class MADE2d(nn.Module):
             hidden_layer = MaskedConv2dwithWeightNorm('B', order, hidden_channels, hidden_channels, hidden_kernel, padding=padding, bias=bias)
             self.hidden_layers.append(hidden_layer)
         self.hidden_layers = nn.ModuleList(self.hidden_layers)
-        assert self.num_hiddens == len(self.hidden_layers) + 1
+        assert num_hiddens == len(self.hidden_layers) + 1
         out_kernel = _pair(hidden_kernels[-1])
         padding = (out_kernel[0] // 2, out_kernel[1] // 2)
         self.output_layer = MaskedConv2dwithWeightNorm('B', order, hidden_channels, in_channels, out_kernel, padding=padding, bias=bias)
