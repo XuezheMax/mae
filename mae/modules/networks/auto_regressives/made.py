@@ -60,7 +60,7 @@ class MADE2d(nn.Module):
     The MADE2d model.
     """
 
-    def __init__(self, in_channels, kernel_size, mask_type, order, bias=True):
+    def __init__(self, in_channels, kernel_size, num_hiddens, hidden_channels, hidden_kernels, order, bias=True):
         """
 
         Args:
@@ -68,11 +68,38 @@ class MADE2d(nn.Module):
                 number of channels
             kernel_size: int or tuple
                 kernel size
-            mask_type: 'A' or 'B'
+            num_hiddens: int
+                number of hidden layers
+            hidden_channels: int
+                number of channels of hidden layers
+            hidden_kernels: list of int or tuples
+                kernel_size of each hidden layer
             order: 'A' or 'B'
             bias: using bias (default=True)
         """
         super(MADE2d, self).__init__()
+        self.activation = nn.ELU() # TODO other activation functions
+        assert num_hiddens > 0
+        assert num_hiddens == len(hidden_kernels)
         kH, kW = _pair(kernel_size)
         padding = (kH // 2, kW // 2)
-        self.conv = MaskedConv2dwithWeightNorm(mask_type, order, in_channels, in_channels, kernel_size, padding=padding)
+        self.top_layer = MaskedConv2dwithWeightNorm('A', order, in_channels, hidden_channels, kernel_size, padding=padding, bias=bias)
+        self.direct_connect = MaskedConv2dwithWeightNorm('A', order, in_channels, in_channels, kernel_size, padding=padding, bias=False)
+
+        self.hidden_layers = []
+        for i in range(num_hiddens - 1):
+            hidden_kernel = _pair(hidden_kernels[i])
+            padding = (hidden_kernel[0] // 2, hidden_kernel[1] // 2)
+            hidden_layer = MaskedConv2dwithWeightNorm('B', order, hidden_channels, hidden_channels, hidden_kernel, padding=padding, bias=bias)
+            self.hidden_layers.append(hidden_layer)
+        self.hidden_layers = nn.ModuleList(self.hidden_layers)
+        assert self.num_hiddens == len(self.hidden_layers) + 1
+        out_kernel = _pair(hidden_kernels[-1])
+        padding = (out_kernel[0] // 2, out_kernel[1] // 2)
+        self.output_layer = MaskedConv2dwithWeightNorm('B', order, hidden_channels, in_channels, out_kernel, padding=padding, bias=bias)
+
+    def forward(self, x):
+        output = self.activation(self.top_layer(x))
+        for hidden_layer in self.hidden_layers:
+            output = self.activation(hidden_layer(output) + output)
+        return self.output_layer(output) + self.direct_connect(x)
