@@ -147,7 +147,7 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
                 # [batch, nc, H, W]
                 new_x = sample_from_discretized_mix_logistic(mu, log_scale, coeffs, logit_probs, random_sample)
                 x[:, :, i, j] = new_x[:, :, i, j]
-        return x
+        return x, None
 
     def forward(self, x, z):
         return self.core(x, z)
