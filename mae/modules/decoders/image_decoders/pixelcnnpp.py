@@ -47,7 +47,7 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
         )
 
         hidden_channels = 64
-        self.core = PixelCNNPP(3, self.nc, hidden_channels, 4, h_channels, dropout=dropout)
+        self.core = PixelCNNPP(3, self.nc, hidden_channels, 5, h_channels, dropout=dropout)
         self.output = nn.Sequential(
             # state [64, 32, 32]
             nn.Conv2d(hidden_channels, hidden_channels, 1, bias=False),
