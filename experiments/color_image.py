@@ -66,7 +66,7 @@ def get_batch(data, indices):
         img, label = data[index]
         imgs.append(img)
         labels.append(label)
-    return torch.stack(imgs, dim=0), torch.IntTensor(labels)
+    return torch.stack(imgs, dim=0), torch.LongTensor(labels)
 
 
 def iterate_minibatches(data, indices, batch_size, shuffle):
