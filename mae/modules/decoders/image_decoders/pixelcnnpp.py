@@ -24,7 +24,9 @@ class _PixelCNNPPCore(nn.Module):
             nn.BatchNorm2d(z_channels // 4),
             nn.ELU(),
             # state [b, z_channels / 4, 32, 32]
-            nn.Conv2d(z_channels // 4, h_channels, 1)
+            nn.Conv2d(z_channels // 4, h_channels, 1),
+            nn.BatchNorm2d(h_channels),
+            nn.ELU(),
             # state [b, h_channels, 32, 32]
         )
 
@@ -58,6 +60,11 @@ class _PixelCNNPPCore(nn.Module):
         nn.init.constant_(m.bias, 0)
 
         m = self.z_transform[4]
+        assert isinstance(m, nn.BatchNorm2d)
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
+
+        m = self.z_transform[7]
         assert isinstance(m, nn.BatchNorm2d)
         nn.init.constant_(m.weight, 1)
         nn.init.constant_(m.bias, 0)
