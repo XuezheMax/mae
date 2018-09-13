@@ -231,7 +231,21 @@ class UpSampling(nn.Module):
 
 class PixelCNNPP(nn.Module):
     def __init__(self, levels, in_channels, out_channels, num_resnets, h_channels=0, dropout=0.0):
+        """
+
+        Args:
+            levels: the levels of the network (number of gated resnet blocks in up or down pass)
+            in_channels: the input channels
+            out_channels: the output and hidden channels
+            num_resnets: number of resnet layers in each gated resnet block
+            h_channels: the channel of conditional input h (default = 0)
+            # h_layer: the layer to get h. the output shape of h_layer should be [b, h_channels, H, W] (if h_channels = 0, h_layer should be None)
+            dropout: dropout rate
+        """
         super(PixelCNNPP, self).__init__()
+        # if h_channels == 0:
+        #     assert h_layer is None
+        # self.h_layer = h_layer
         up_layers = []
         nins1 = []
         nins2 = []
@@ -291,6 +305,8 @@ class PixelCNNPP(nn.Module):
         up_pass = []
         x1 = None
         x2 = None
+        # if self.h_layer is not None:
+        #     h = self.h_layer(h)
         for l, (layer, up_h) in enumerate(zip(self.up_layers, self.up_hs)):
             if l == 0:
                 x1, x2 = layer(input)
@@ -298,8 +314,6 @@ class PixelCNNPP(nn.Module):
                 x1, x2 = layer(x1, x2, h=h)
                 up_pass.append((x1, x2))
             h = up_h(h)
-
-        # assert len(up_pass) == len(self.nins1), '%d, %d' % (len(up_pass), len(self.nins1))
 
         for l, (layer, down_h, nin1, nin2) in enumerate(zip(self.down_layers, self.down_hs, self.nins1, self.nins2)):
             u1, u2 = up_pass.pop()

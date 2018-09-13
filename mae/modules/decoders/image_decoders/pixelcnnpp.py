@@ -32,7 +32,7 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
         self.H = 8
         self.W = 8
 
-        self.z_transform = nn.Sequential(
+        z_transform = nn.Sequential(
             # state [b, z_channels, 8, 8]
             nn.ConvTranspose2d(z_channels, z_channels // 2, 3, 2, 1, 1, bias=False),
             nn.BatchNorm2d(z_channels // 2),
@@ -47,8 +47,8 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
         )
 
         hidden_channels = 64
-        self.core = PixelCNNPP(3, self.nc, hidden_channels, 5, h_channels, dropout=dropout)
-        self.output = nn.Sequential(
+        core = PixelCNNPP(3, self.nc, hidden_channels, 5, h_channels, dropout=dropout)
+        output = nn.Sequential(
             # state [64, 32, 32]
             nn.Conv2d(hidden_channels, hidden_channels, 1, bias=False),
             nn.BatchNorm2d(hidden_channels),
@@ -57,47 +57,49 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
             nn.Conv2d(64, (self.nc * 3 + 1) * self.nmix, 1, bias=False)
         )
 
+        self.core = nn.ModuleList([z_transform, core, output])
+
         self.reset_parameters()
 
         if ngpu > 1:
-            self.z_transform = nn.DataParallel(self.z_transform, device_ids=list(range(ngpu)))
             self.core = nn.DataParallel(self.core, device_ids=list(range(ngpu)))
-            self.output = nn.DataParallel(self.output, device_ids=list(range(ngpu)))
 
     def reset_parameters(self):
         # //////// z_transform //////////
-        m = self.z_transform[0]
+        z_transform = self.core[0]
+        m = z_transform[0]
         assert isinstance(m, nn.ConvTranspose2d)
         nn.init.xavier_normal_(m.weight)
 
-        m = self.z_transform[3]
+        m = z_transform[3]
         assert isinstance(m, nn.ConvTranspose2d)
         nn.init.xavier_normal_(m.weight)
 
-        m = self.z_transform[1]
+        m = z_transform[1]
         assert isinstance(m, nn.BatchNorm2d)
         nn.init.constant_(m.weight, 1)
         nn.init.constant_(m.bias, 0)
 
-        m = self.z_transform[4]
+        m = z_transform[4]
         assert isinstance(m, nn.BatchNorm2d)
         nn.init.constant_(m.weight, 1)
         nn.init.constant_(m.bias, 0)
 
-        m = self.z_transform[6]
+        m = z_transform[6]
         assert isinstance(m, nn.Conv2d)
         nn.init.xavier_normal_(m.weight)
 
-        # //////// core //////////
-        m = self.output[0]
+        # //////// output //////////
+        output = self.core[2]
+        m = output[0]
         assert isinstance(m, nn.Conv2d)
         nn.init.xavier_normal_(m.weight)
 
-        m = self.output[3]
+        m = output[3]
         assert isinstance(m, nn.Conv2d)
         nn.init.xavier_normal_(m.weight)
 
-        m = self.output[1]
+        m = output[1]
         assert isinstance(m, nn.BatchNorm2d)
         nn.init.constant_(m.weight, 1)
         nn.init.constant_(m.bias, 0)
@@ -142,8 +144,8 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
         return x
 
     def forward(self, x, z):
-        h = self.z_transform(z)
-        return self.output(self.core(x, h=h))
+        h = self.core[0](z)
+        return self.core[2](self.core[1](x, h=h))
 
     @classmethod
     def from_params(cls, params: Dict) -> "PixelCNNPPDecoderColorImage32x32":
