@@ -66,9 +66,9 @@ class AF2d(Flow):
     Auto-Regressive Flow for 2d data. input shape (batch, channels, H, W)
     The backward path is implemented by IAF, the forward is the corresponding AF.
     """
-    def __init__(self, channels, H, W):
+    def __init__(self, channels, height, width):
         super(AF2d, self).__init__()
-        self._input_shape = (channels, H, W)
+        self._input_shape = (channels, height, width)
 
     def input_size(self) -> Tuple:
         """

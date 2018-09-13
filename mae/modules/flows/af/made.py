@@ -3,7 +3,7 @@ __author__ = 'max'
 from overrides import overrides
 import torch.nn as nn
 import torch
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple
 
 from mae.modules.networks.auto_regressives.made import MADE
 from mae.modules.flows.af.af import AF
