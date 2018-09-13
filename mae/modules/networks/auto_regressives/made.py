@@ -84,7 +84,7 @@ class MADE2d(nn.Module):
         kH, kW = _pair(kernel_size)
         padding = (kH // 2, kW // 2)
         self.top_layer = MaskedConv2dwithWeightNorm('A', order, in_channels, hidden_channels, kernel_size, padding=padding, bias=bias)
-        self.direct_connect = MaskedConv2dwithWeightNorm('A', order, in_channels, in_channels, kernel_size, padding=padding, bias=False)
+        # self.direct_connect = MaskedConv2dwithWeightNorm('A', order, in_channels, in_channels, kernel_size, padding=padding, bias=False)
 
         self.hidden_layers = []
         for i in range(num_hiddens - 1):
@@ -102,4 +102,4 @@ class MADE2d(nn.Module):
         output = self.activation(self.top_layer(x))
         for hidden_layer in self.hidden_layers:
             output = self.activation(hidden_layer(output) + output)
-        return self.output_layer(output) + self.direct_connect(x)
+        return self.output_layer(output) #+ self.direct_connect(x)

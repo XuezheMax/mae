@@ -111,7 +111,7 @@ max_decay = 6
 
 
 def train(epoch):
-    print('Epoch: %d lr=%.6f, decay rate=%.2f (schedule=%d, patient=%d, decay=%d)' % (epoch, scheduler.get_lr()[0], decay_rate, schedule, patient, decay))
+    print('Epoch: %d lr=%.6f, decay rate=%.2f (schedule=%d, patient=%d, decay=%d)' % (epoch, lr, decay_rate, schedule, patient, decay))
     mae.train()
     recon_loss = 0
     kl_loss = 0
@@ -267,6 +267,7 @@ best_bpd = 1e12
 
 for epoch in range(1, args.epochs + 1):
     train(epoch)
+    lr = scheduler.get_lr()[0]
     print('----------------------------------------------------------------------------------------------------------------------------')
     with torch.no_grad():
         loss, recon, kl, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss, bits_per_pixel = eval(train_data, val_index)
