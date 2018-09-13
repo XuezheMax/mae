@@ -12,7 +12,7 @@ from mae.modules.utils import sample_from_discretized_mix_logistic
 
 
 class _PixelCNNPPCore(nn.Module):
-    def __init__(self, z_channels, h_channels, nmix, dropout=0.):
+    def __init__(self, nc, z_channels, h_channels, nmix, dropout=0.):
         super(_PixelCNNPPCore, self).__init__()
         self.z_transform = nn.Sequential(
             # state [b, z_channels, 8, 8]
@@ -29,7 +29,7 @@ class _PixelCNNPPCore(nn.Module):
         )
 
         hidden_channels = 64
-        self.core = PixelCNNPP(3, self.nc, hidden_channels, 5, h_channels, dropout=dropout)
+        self.core = PixelCNNPP(3, nc, hidden_channels, 5, h_channels, dropout=dropout)
         self.output = nn.Sequential(
             # state [64, 32, 32]
             nn.Conv2d(hidden_channels, hidden_channels, 1, bias=False),
@@ -105,7 +105,7 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
         self.H = 8
         self.W = 8
 
-        self.core = _PixelCNNPPCore(z_channels, h_channels, nmix, dropout=dropout)
+        self.core = _PixelCNNPPCore(self.nc, z_channels, h_channels, nmix, dropout=dropout)
         if ngpu > 1:
             self.core = nn.DataParallel(self.core, device_ids=list(range(ngpu)))
 
