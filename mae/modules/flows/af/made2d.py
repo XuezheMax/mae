@@ -27,7 +27,7 @@ class AF2dMADEBlock(nn.Module):
             for _ in range(W):
                 mu = self.mu(y)
                 if self.logvar:
-                    logstd = self.logvar(y).clamp(min=-10., max=10.) * 0.5
+                    logstd = self.logvar(y) * 0.5
                 y = (x - mu).div(logstd.exp() + eps)
         return y, logstd.view(x.size(0), -1).sum(dim=1)
 

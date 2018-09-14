@@ -50,7 +50,7 @@ class ColorImageDecoder(Decoder):
         coeffs = output[:, (self.nc * 2 + 1) * nmix:(self.nc * 2 + 4) * nmix].view(batch, nmix, self.nc, H, W)
 
         bound = 1 + 1. / 255
-        return mu.clamp(min=-bound, max=bound), log_scale.clamp(min=-7.), F.log_softmax(logit_probs, dim=1), coeffs.tanh()
+        return mu, log_scale.clamp(min=-7.), F.log_softmax(logit_probs, dim=1), coeffs.tanh()
 
     @overrides
     def decode(self, z, random_sample):
