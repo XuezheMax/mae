@@ -185,10 +185,6 @@ class GaussianEncoder(Encoder):
             # [batch * nsamples] --> [batch, nsamples]
             log_probs_prior = self.log_probability_prior(z.view(z_size[0] * z_size[1], *z_size[2:])).view(z_size[0], z_size[1])
             log_probs_posterior = self.log_probability_posterior(x, z, distr_params=distr_params)
-            print('prior')
-            print(log_probs_prior)
-            input()
-
             # compute KL using MC [batch]
             KL = (log_probs_posterior - log_probs_prior).mean(dim=1)
 
@@ -222,16 +218,13 @@ class GaussianEncoder(Encoder):
                 print(z_normal.max())
                 print(z_normal.min())
                 input()
-                print('logdet')
-                print(logdet)
-                input()
+                # print('logdet')
+                # print(logdet)
+                # input()
         # [batch, z_shape]
         log_probs = z_normal.pow(2) + math.log(math.pi * 2.)
         # [batch, z_shape] --> [batch, nz] -- > [batch]
         log_probs = log_probs.view(z.size(0), -1).sum(dim=1) * -0.5
-        print('log probs')
-        print(log_probs)
-        input()
         return log_probs + logdet
 
     @overrides
