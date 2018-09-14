@@ -2,7 +2,7 @@ __author__ = 'max'
 
 import torch.nn as nn
 from torch.nn.modules.utils import _pair
-from mae.modules.networks.masked import MaskedLinear, MaskedLinearWeightNorm, MaskedConv2dwithWeightNorm
+from mae.modules.networks.masked import MaskedLinear, MaskedConv2d
 
 
 class MADE(nn.Module):
@@ -10,7 +10,7 @@ class MADE(nn.Module):
     The MADE model. See https://arxiv.org/abs/1502.03509 for details.
     """
 
-    def __init__(self, input_size, num_hiddens, hidden_size, order, bias=True, weight_norm=True):
+    def __init__(self, input_size, num_hiddens, hidden_size, order, bias=True):
         '''
 
         Args:
@@ -29,24 +29,20 @@ class MADE(nn.Module):
 
         assert num_hiddens > 0
         total_units = input_size - 1
-        if weight_norm:
-            MASKED = MaskedLinearWeightNorm
-        else:
-            MASKED = MaskedLinear
 
-        self.input_layer = MASKED(input_size, hidden_size, ('input-hidden', order), total_units, bias=bias)
-        self.direct_connect = MASKED(input_size, input_size, ('input-output', order), total_units, bias=False)
+        self.input_layer = MaskedLinear(input_size, hidden_size, ('input-hidden', order), total_units, bias=bias)
+        self.direct_connect = MaskedLinear(input_size, input_size, ('input-output', order), total_units, bias=False)
 
         max_units = self.input_layer.max_units
         self.hidden_layers = []
         for hid in range(1, num_hiddens):
-            hidden_layer = MASKED(hidden_size, hidden_size, ('hidden-hidden', order), total_units, max_units=max_units, bias=bias)
+            hidden_layer = MaskedLinear(hidden_size, hidden_size, ('hidden-hidden', order), total_units, max_units=max_units, bias=bias)
             max_units = hidden_layer.max_units
             self.hidden_layers.append(hidden_layer)
         self.hidden_layers = nn.ModuleList(self.hidden_layers)
         assert self.num_hiddens == len(self.hidden_layers) + 1
 
-        self.output_layer = MASKED(hidden_size, input_size, ('hidden-output', order), total_units, max_units=max_units, bias=bias)
+        self.output_layer = MaskedLinear(hidden_size, input_size, ('hidden-output', order), total_units, max_units=max_units, bias=bias)
 
     def forward(self, x):
         output = self.activation(self.input_layer(x))
@@ -83,20 +79,20 @@ class MADE2d(nn.Module):
         assert num_hiddens == len(hidden_kernels)
         kH, kW = _pair(kernel_size)
         padding = (kH // 2, kW // 2)
-        self.top_layer = MaskedConv2dwithWeightNorm('A', order, in_channels, hidden_channels, kernel_size, padding=padding, bias=bias)
-        self.direct_connect = MaskedConv2dwithWeightNorm('A', order, in_channels, in_channels, kernel_size, padding=padding, bias=False)
+        self.top_layer = MaskedConv2d(in_channels, hidden_channels, kernel_size, mask_type='A', order=order, padding=padding, bias=bias)
+        self.direct_connect = MaskedConv2d(in_channels, in_channels, kernel_size, mask_type='A', order=order, padding=padding, bias=False)
 
         self.hidden_layers = []
         for i in range(num_hiddens - 1):
             hidden_kernel = _pair(hidden_kernels[i])
             padding = (hidden_kernel[0] // 2, hidden_kernel[1] // 2)
-            hidden_layer = MaskedConv2dwithWeightNorm('B', order, hidden_channels, hidden_channels, hidden_kernel, padding=padding, bias=bias)
+            hidden_layer = MaskedConv2d(hidden_channels, hidden_channels, hidden_kernel, mask_type='B', order=order, padding=padding, bias=bias)
             self.hidden_layers.append(hidden_layer)
         self.hidden_layers = nn.ModuleList(self.hidden_layers)
         assert num_hiddens == len(self.hidden_layers) + 1
         out_kernel = _pair(hidden_kernels[-1])
         padding = (out_kernel[0] // 2, out_kernel[1] // 2)
-        self.output_layer = MaskedConv2dwithWeightNorm('B', order, hidden_channels, in_channels, out_kernel, padding=padding, bias=bias)
+        self.output_layer = MaskedConv2d(hidden_channels, in_channels, out_kernel, mask_type='B', order=order, padding=padding, bias=bias)
 
     def forward(self, x):
         output = self.activation(self.top_layer(x))

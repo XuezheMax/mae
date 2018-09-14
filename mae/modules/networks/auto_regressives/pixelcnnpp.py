@@ -1,78 +1,49 @@
 __author__ = 'max'
 
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from mae.modules.networks.masked import DownShiftConv2d, DownRightShiftConv2d
 from mae.modules.networks.masked import DownShiftConvTranspose2d, DownRightShiftConvTranspose2d
+from mae.modules.networks.weight_norm import Conv2dWeightNorm, ConvTranspose2dWeightNorm
 
 
 class GatedResnetBlock(nn.Module):
     def __init__(self, in_channels, h_channels=0, dropout=0.0):
         super(GatedResnetBlock, self).__init__()
-        # Todo weight normalization vs batch normalization
         self.down_conv1 = DownShiftConv2d(in_channels, in_channels, kernel_size=(2, 3), bias=True)
-        self.down_bn1 = nn.BatchNorm2d(in_channels)
         self.down_conv2 = DownShiftConv2d(in_channels, 2 * in_channels, kernel_size=(2, 3), bias=True)
-        self.down_bn2 = nn.BatchNorm2d(2 * in_channels)
 
         self.down_right_conv1 = DownRightShiftConv2d(in_channels, in_channels, kernel_size=(2, 2), bias=True)
-        self.down_right_bn1 = nn.BatchNorm2d(in_channels)
-        self.nin = nn.Conv2d(in_channels, in_channels, kernel_size=(1, 1))
-        self.nin_bn = nn.BatchNorm2d(in_channels)
+        self.nin = Conv2dWeightNorm(in_channels, in_channels, kernel_size=(1, 1))
         self.down_right_conv2 = DownRightShiftConv2d(in_channels, 2 * in_channels, kernel_size=(2, 2), bias=True)
-        self.down_right_bn2 = nn.BatchNorm2d(2 * in_channels)
 
         if h_channels:
-            self.h_conv = nn.Conv2d(h_channels, 2 * in_channels, kernel_size=(3, 3), padding=1)
-            self.h_bn = nn.BatchNorm2d(2 * in_channels)
+            self.h_conv = Conv2dWeightNorm(h_channels, 2 * in_channels, kernel_size=(3, 3), padding=1)
         else:
             self.h_conv = None
             self.h_bn = None
 
         self.dropout = nn.Dropout(p=dropout)
 
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        nn.init.constant_(self.down_bn1.weight, 1)
-        nn.init.constant_(self.down_bn1.bias, 0)
-
-        nn.init.constant_(self.down_bn2.weight, 1)
-        nn.init.constant_(self.down_bn2.bias, 0)
-
-        nn.init.constant_(self.down_right_bn1.weight, 1)
-        nn.init.constant_(self.down_right_bn1.bias, 0)
-
-        nn.init.constant_(self.down_right_bn2.weight, 1)
-        nn.init.constant_(self.down_right_bn2.bias, 0)
-
-        nn.init.xavier_normal_(self.nin.weight)
-        nn.init.constant_(self.nin_bn.weight, 1)
-        nn.init.constant_(self.nin_bn.bias, 0)
-
-        nn.init.constant_(self.h_bn.weight, 1)
-        nn.init.constant_(self.h_bn.bias, 0)
-
     def forward(self, x1, x2, h=None):
         if h is not None:
-            hc = self.h_bn(self.h_conv(h))
+            hc = self.h_conv(h)
         else:
             hc = 0
 
-        c1 = F.elu(self.down_bn1(self.down_conv1(x1)))
+        c1 = F.elu(self.down_conv1(x1))
         # dropout
         c1 = self.dropout(c1)
-        a1, b1 = (self.down_bn2(self.down_conv2(c1)) + hc).chunk(2, 1)
+        a1, b1 = (self.down_conv2(c1) + hc).chunk(2, 1)
         c1 = F.elu(a1 * torch.sigmoid(b1) + x1)
 
-        c2 = self.down_right_bn1(self.down_right_conv1(x2))
-        c2 = F.elu(c2 + self.nin_bn(self.nin(c1)))
+        c2 = self.down_right_conv1(x2)
+        c2 = F.elu(c2 + self.nin(c1))
         # dropout
         c2 = self.dropout(c2)
-        a2, b2 = (self.down_right_bn2(self.down_right_conv2(c2)) + hc).chunk(2, 1)
+        a2, b2 = (self.down_right_conv2(c2) + hc).chunk(2, 1)
         c2 = F.elu(a2 * torch.sigmoid(b2) + x2)
 
         return c1, c2
@@ -82,24 +53,9 @@ class TopShitBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(TopShitBlock, self).__init__()
         self.down_conv1 = DownShiftConv2d(in_channels, out_channels, kernel_size=(2, 3), bias=True)
-        self.bn1 = nn.BatchNorm2d(out_channels)
 
         self.down_conv2 = DownShiftConv2d(in_channels, out_channels, kernel_size=(1, 3), bias=True)
-        self.bn2 = nn.BatchNorm2d(out_channels)
         self.down_right_conv = DownRightShiftConv2d(in_channels, out_channels, kernel_size=(2, 1), bias=True)
-        self.bn3 = nn.BatchNorm2d(out_channels)
-
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        nn.init.constant_(self.bn1.weight, 1)
-        nn.init.constant_(self.bn1.bias, 0)
-
-        nn.init.constant_(self.bn2.weight, 1)
-        nn.init.constant_(self.bn2.bias, 0)
-
-        nn.init.constant_(self.bn3.weight, 1)
-        nn.init.constant_(self.bn3.bias, 0)
 
     @staticmethod
     def down_shift(input):
@@ -112,10 +68,10 @@ class TopShitBlock(nn.Module):
         return torch.cat([input.new_zeros(batch_size, channels, H, 1), input[:, :, :, :W-1]], dim=3)
 
     def forward(self, input):
-        x1 = TopShitBlock.down_shift(self.bn1(self.down_conv1(input)))
+        x1 = TopShitBlock.down_shift(self.down_conv1(input))
 
-        x2 = TopShitBlock.down_shift(self.bn2(self.down_conv2(input)))
-        x2 = x2 + TopShitBlock.right_shift(self.bn3(self.down_right_conv(input)))
+        x2 = TopShitBlock.down_shift(self.down_conv2(input))
+        x2 = x2 + TopShitBlock.right_shift(self.down_right_conv(input))
 
         return F.elu(x1), F.elu(x2)
 
@@ -124,23 +80,11 @@ class DownSamplingBlock(nn.Module):
     def __init__(self, num_filters):
         super(DownSamplingBlock, self).__init__()
         self.down_conv = DownShiftConv2d(num_filters, num_filters, kernel_size=(2, 3), stride=(2, 2), bias=True)
-        self.bn1 = nn.BatchNorm2d(num_filters)
-
         self.down_right_conv = DownRightShiftConv2d(num_filters, num_filters, kernel_size=(2, 2), stride=(2, 2), bias=True)
-        self.bn2 = nn.BatchNorm2d(num_filters)
-
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        nn.init.constant_(self.bn1.weight, 1)
-        nn.init.constant_(self.bn1.bias, 0)
-
-        nn.init.constant_(self.bn2.weight, 1)
-        nn.init.constant_(self.bn2.bias, 0)
 
     def forward(self, x1, x2, h=None):
-        x1 = self.bn1(self.down_conv(x1))
-        x2 = self.bn2(self.down_right_conv(x2))
+        x1 = self.down_conv(x1)
+        x2 = self.down_right_conv(x2)
         return F.elu(x1), F.elu(x2)
 
 
@@ -148,42 +92,21 @@ class UpSamplingBlock(nn.Module):
     def __init__(self, num_filters):
         super(UpSamplingBlock, self).__init__()
         self.down_deconv = DownShiftConvTranspose2d(num_filters, num_filters, kernel_size=(2, 3), stride=(2, 2), bias=True)
-        self.bn1 = nn.BatchNorm2d(num_filters)
-
         self.down_right_deconv = DownRightShiftConvTranspose2d(num_filters, num_filters, kernel_size=(2, 2), stride=(2, 2), bias=True)
-        self.bn2 = nn.BatchNorm2d(num_filters)
-
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        nn.init.constant_(self.bn1.weight, 1)
-        nn.init.constant_(self.bn1.bias, 0)
-
-        nn.init.constant_(self.bn2.weight, 1)
-        nn.init.constant_(self.bn2.bias, 0)
 
     def forward(self, x1, x2, h=None):
-        x1 = self.bn1(self.down_deconv(x1))
-        x2 = self.bn2(self.down_right_deconv(x2))
+        x1 = self.down_deconv(x1)
+        x2 = self.down_right_deconv(x2)
         return F.elu(x1), F.elu(x2)
 
 
 class NINBlock(nn.Module):
     def __init__(self, num_filters):
         super(NINBlock, self).__init__()
-        self.nin = nn.Conv2d(num_filters, num_filters, kernel_size=(1, 1))
-        self.bn = nn.BatchNorm2d(num_filters)
-
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        nn.init.xavier_normal_(self.nin.weight)
-
-        nn.init.constant_(self.bn.weight, 1)
-        nn.init.constant_(self.bn.bias, 0)
+        self.nin = Conv2dWeightNorm(num_filters, num_filters, kernel_size=(1, 1))
 
     def forward(self, x, residual):
-        residual = self.bn(self.nin(residual))
+        residual = self.nin(residual)
         return F.elu(x + residual)
 
 
@@ -198,35 +121,19 @@ class Identity(nn.Module):
 class DownSampling(nn.Module):
     def __init__(self, num_filters):
         super(DownSampling, self).__init__()
-        self.conv = nn.Conv2d(num_filters, num_filters * 2, kernel_size=(3, 3), stride=(2, 2), padding=1)
-        self.bn = nn.BatchNorm2d(num_filters * 2)
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        nn.init.xavier_normal_(self.conv.weight)
-
-        nn.init.constant_(self.bn.weight, 1)
-        nn.init.constant_(self.bn.bias, 0)
+        self.conv = Conv2dWeightNorm(num_filters, num_filters * 2, kernel_size=(3, 3), stride=(2, 2), padding=1)
 
     def forward(self, x):
-        return F.elu(self.bn(self.conv(x)))
+        return F.elu(self.conv(x))
 
 
 class UpSampling(nn.Module):
     def __init__(self, num_filters):
         super(UpSampling, self).__init__()
-        self.deconv = nn.ConvTranspose2d(num_filters, num_filters // 2, kernel_size=(3, 3), stride=(2, 2), padding=1, output_padding=1)
-        self.bn = nn.BatchNorm2d(num_filters // 2)
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        nn.init.xavier_normal_(self.deconv.weight)
-
-        nn.init.constant_(self.bn.weight, 1)
-        nn.init.constant_(self.bn.bias, 0)
+        self.deconv = ConvTranspose2dWeightNorm(num_filters, num_filters // 2, kernel_size=(3, 3), stride=(2, 2), padding=1, output_padding=1)
 
     def forward(self, x):
-        return F.elu(self.bn(self.deconv(x)))
+        return F.elu(self.deconv(x))
 
 
 class PixelCNNPP(nn.Module):

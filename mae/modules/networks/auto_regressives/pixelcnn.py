@@ -1,8 +1,8 @@
 __author__ = 'max'
 
-import math
 import torch.nn as nn
 from mae.modules.networks.masked import MaskedConv2d
+from mae.modules.networks.weight_norm import Conv2dWeightNorm
 
 
 class PixelCNNBlock(nn.Module):
@@ -13,42 +13,13 @@ class PixelCNNBlock(nn.Module):
         out_channels = in_channels // 2
 
         self.main = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
+            Conv2dWeightNorm(in_channels, out_channels, 1, bias=False),
             nn.ELU(),
-            MaskedConv2d(self.mask_type, out_channels, out_channels, out_channels, kernel_size, padding=padding, bias=False),
-            nn.BatchNorm2d(out_channels),
+            MaskedConv2d(out_channels, out_channels, kernel_size, mask_type='B', padding=padding, bias=False),
             nn.ELU(),
-            nn.Conv2d(out_channels, in_channels, 1, bias=False),
-            nn.BatchNorm2d(in_channels),
+            Conv2dWeightNorm(out_channels, in_channels, 1, bias=False),
         )
         self.activation = nn.ELU()
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        m = self.main[0]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.main[6]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.main[1]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
-        m = self.main[4]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
-        m = self.main[7]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
 
     def forward(self, input):
         return self.activation(self.main(input) + input)
@@ -61,17 +32,9 @@ class MaskABlock(nn.Module):
         padding = kernel_size // 2
 
         self.main = nn.Sequential(
-            MaskedConv2d(self.mask_type, masked_channels, in_channels, out_channels, kernel_size, padding=padding, bias=False),
-            nn.BatchNorm2d(out_channels),
+            MaskedConv2d(in_channels, out_channels, kernel_size, mask_type='A', masked_channels=masked_channels, padding=padding, bias=False),
             nn.ELU(),
         )
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        m = self.main[1]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
 
     def forward(self, input):
         return self.main(input)
