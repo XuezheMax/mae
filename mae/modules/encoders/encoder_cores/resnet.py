@@ -1,13 +1,12 @@
 __author__ = 'max'
 
-import math
 from typing import Tuple, Dict
 from overrides import overrides
-import torch
 import torch.nn as nn
 
 from mae.modules.encoders.encoder_cores.encoder_core import EncoderCore
 from mae.modules.networks.resnet import ResNet
+from mae.modules.networks.weight_norm import Conv2dWeightNorm, LinearWeightNorm
 
 
 class ResnetEncoderCoreBinaryImage28x28(EncoderCore):
@@ -23,24 +22,10 @@ class ResnetEncoderCoreBinaryImage28x28(EncoderCore):
         hidden_units = 512
         self.main = nn.Sequential(
             ResNet(self.nc, [32, 64, 64], [2, 2, 2]),
-            nn.Conv2d(64, hidden_units, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(hidden_units),
+            Conv2dWeightNorm(64, hidden_units, 4, 1, 0, bias=False),
             nn.ELU(),
         )
-        self.linear = nn.Linear(hidden_units, 2 * nz, bias=False)
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        m = self.main[1]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.main[2]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
-        nn.init.xavier_uniform_(self.linear.weight)
+        self.linear = LinearWeightNorm(hidden_units, 2 * nz, bias=False)
 
     def forward(self, input):
         output = self.main(input)
@@ -71,58 +56,22 @@ class ResnetEncoderCoreColorImage32x32(EncoderCore):
         self.main = nn.Sequential(
             ResNet(self.nc, [48, 48], [1, 1]),
             # state [48, 32, 32]
-            nn.Conv2d(48, 96, 3, 2, 1, bias=False),
-            nn.BatchNorm2d(96),
+            Conv2dWeightNorm(48, 96, 3, 2, 1, bias=False),
             nn.ELU(),
             # state [96, 16, 16]
             ResNet(96, [96, 96], [1, 1]),
             # state [96, 16, 16]
-            nn.Conv2d(96, 96, 3, 2, 1, bias=False),
-            nn.BatchNorm2d(96),
+            Conv2dWeightNorm(96, 96, 3, 2, 1, bias=False),
             nn.ELU(),
             # state [96, 8, 8]
             ResNet(96, [96, 96, 96], [1, 1, 1]),
             # state [96, 8, 8]
-            nn.Conv2d(96, 48, 1, 1, bias=False),
-            nn.BatchNorm2d(48),
+            Conv2dWeightNorm(96, 48, 1, 1, bias=False),
             nn.ELU(),
             # state [48, 8, 8]
-            nn.Conv2d(48, 2 * self.z_channels, 1, 1, bias=False),
+            Conv2dWeightNorm(48, 2 * self.z_channels, 1, 1, bias=False),
             # [2 * z_channels, 8, 8]
         )
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        m = self.main[1]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.main[5]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.main[9]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.main[12]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.main[2]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
-        m = self.main[6]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
-        m = self.main[10]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
 
     def forward(self, input):
         # [batch, 2 * z_channels, 8, 8]
