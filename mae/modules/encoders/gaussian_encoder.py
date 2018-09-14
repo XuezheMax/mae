@@ -186,14 +186,9 @@ class GaussianEncoder(Encoder):
             log_probs_prior = self.log_probability_prior(z.view(z_size[0] * z_size[1], *z_size[2:])).view(z_size[0], z_size[1])
             log_probs_posterior = self.log_probability_posterior(x, z, distr_params=distr_params)
             print(log_probs_prior)
-            input()
-            print(log_probs_posterior)
-            input()
 
             # compute KL using MC [batch]
             KL = (log_probs_posterior - log_probs_prior).mean(dim=1)
-            print(KL)
-            input()
 
         PostKL = self._postKL(mu, logvar)
 
@@ -221,6 +216,12 @@ class GaussianEncoder(Encoder):
                 logdet = 0.
             else:
                 z_normal, logdet = self.prior_flow.backward(z)
+                print('z')
+                print(z_normal)
+                input()
+                print('logdet')
+                print(logdet)
+                input()
         # [batch, z_shape]
         log_probs = z_normal.pow(2) + math.log(math.pi * 2.)
         # [batch, z_shape] --> [batch, nz] -- > [batch]
