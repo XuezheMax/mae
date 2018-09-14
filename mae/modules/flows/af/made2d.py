@@ -35,7 +35,7 @@ class AF2dMADEBlock(nn.Module):
         # [batch, x_shape]
         mu = self.mu(y)
         if self.logvar:
-            logstd = self.logvar(y).clamp(min=-10., max=10.) * 0.5
+            logstd = self.logvar(y) * 0.5
         else:
             logstd = mu.new_zeros(mu.size())
         x = mu + y * logstd.exp()
