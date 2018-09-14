@@ -1,11 +1,10 @@
 __author__ = 'max'
 
-import math
 from overrides import overrides
 from typing import Dict, Tuple
 import torch.nn as nn
 
-from mae.modules.networks import DeResNet
+from mae.modules.networks import DeResNet, ConvTranspose2dWeightNorm, Conv2dWeightNorm
 from mae.modules.decoders.image_decoders.binary_image_decoder import BinaryImageDecoder
 from mae.modules.decoders.image_decoders.color_image_decoder import ColorImageDecoder
 
@@ -20,26 +19,14 @@ class ResnetDecoderBinaryImage28x28(BinaryImageDecoder):
         super(ResnetDecoderBinaryImage28x28, self).__init__(nz, ngpu=ngpu)
         self.nc = 1
         self.core = nn.Sequential(
-            nn.ConvTranspose2d(nz, 64, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(64),
+            ConvTranspose2dWeightNorm(nz, 64, 4, 1, 0, bias=False),
             nn.ELU(),
             DeResNet(64, [64, 32, self.nc], [2, 2, 2], [0, 1, 1]),
             nn.Sigmoid(),
         )
-        self.reset_parameters()
 
         if ngpu > 1:
             self.core = nn.DataParallel(self.core, device_ids=list(range(ngpu)))
-
-    def reset_parameters(self):
-        m = self.core[0]
-        assert isinstance(m, nn.ConvTranspose2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.core[1]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
 
     def forward(self, z):
         return self.core(z)
@@ -71,63 +58,27 @@ class ResnetDecoderColorImage32x32(ColorImageDecoder):
         self.W = 8
 
         self.core = nn.Sequential(
-            nn.ConvTranspose2d(self.z_channels, 96, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(96),
+            ConvTranspose2dWeightNorm(self.z_channels, 96, 1, 1, 0, bias=False),
             nn.ELU(),
             # state [b, 96, 8, 8]
             DeResNet(96, [96, 96, 96], [1, 1, 1], [0, 0, 0]),
             # state [96, 8, 8]
-            nn.ConvTranspose2d(96, 96, 3, 2, 1, 1, bias=False),
-            nn.BatchNorm2d(96),
+            ConvTranspose2dWeightNorm(96, 96, 3, 2, 1, 1, bias=False),
             nn.ELU(),
             # state [96, 16, 16]
             DeResNet(96, [96, 96], [1, 1], [0, 0]),
             # state [96, 16, 16]
-            nn.ConvTranspose2d(96, 48, 3, 2, 1, 1, bias=False),
-            nn.BatchNorm2d(48),
+            ConvTranspose2dWeightNorm(96, 48, 3, 2, 1, 1, bias=False),
             nn.ELU(),
             # state [48, 32, 32]
             DeResNet(48, [48, 48], [1, 1], [0, 0]),
             # state [48, 32, 32]
-            nn.Conv2d(48, (self.nc * 3 + 1) * self.nmix, 1, bias=False)
+            Conv2dWeightNorm(48, (self.nc * 3 + 1) * self.nmix, 1, bias=False)
             # state [(nc * 3 + 1) * nmix, 32, 32]
         )
-        self.reset_parameters()
 
         if ngpu > 1:
             self.core = nn.DataParallel(self.core, device_ids=list(range(ngpu)))
-
-    def reset_parameters(self):
-        m = self.core[0]
-        assert isinstance(m, nn.ConvTranspose2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.core[4]
-        assert isinstance(m, nn.ConvTranspose2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.core[8]
-        assert isinstance(m, nn.ConvTranspose2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.core[12]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.core[1]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
-        m = self.core[5]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
-        m = self.core[9]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
 
     @overrides
     def z_shape(self) -> Tuple:

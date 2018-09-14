@@ -1,11 +1,10 @@
 __author__ = 'max'
 
-import math
 from overrides import overrides
 from typing import Dict, Tuple
-import torch
 import torch.nn as nn
 
+from mae.modules.networks.weight_norm import Conv2dWeightNorm, ConvTranspose2dWeightNorm
 from mae.modules.networks.auto_regressives.pixelcnnpp import PixelCNNPP
 from mae.modules.decoders.image_decoders.color_image_decoder import ColorImageDecoder
 from mae.modules.utils import sample_from_discretized_mix_logistic
@@ -16,16 +15,13 @@ class _PixelCNNPPCore(nn.Module):
         super(_PixelCNNPPCore, self).__init__()
         self.z_transform = nn.Sequential(
             # state [b, z_channels, 8, 8]
-            nn.ConvTranspose2d(z_channels, z_channels // 2, 3, 2, 1, 1, bias=False),
-            nn.BatchNorm2d(z_channels // 2),
+            ConvTranspose2dWeightNorm(z_channels, z_channels // 2, 3, 2, 1, 1, bias=False),
             nn.ELU(),
             # state [b, z_channels / 2, 16, 16]
-            nn.ConvTranspose2d(z_channels // 2, z_channels // 4, 3, 2, 1, 1, bias=False),
-            nn.BatchNorm2d(z_channels // 4),
+            ConvTranspose2dWeightNorm(z_channels // 2, z_channels // 4, 3, 2, 1, 1, bias=False),
             nn.ELU(),
             # state [b, z_channels / 4, 32, 32]
-            nn.Conv2d(z_channels // 4, h_channels, 1),
-            nn.BatchNorm2d(h_channels),
+            Conv2dWeightNorm(z_channels // 4, h_channels, 1),
             nn.ELU(),
             # state [b, h_channels, 32, 32]
         )
@@ -35,57 +31,11 @@ class _PixelCNNPPCore(nn.Module):
         self.core = PixelCNNPP(3, nc, hidden_channels, num_resnets, h_channels, dropout=dropout)
         self.output = nn.Sequential(
             # state [64, 32, 32]
-            nn.Conv2d(hidden_channels, hidden_channels, 1, bias=False),
-            nn.BatchNorm2d(hidden_channels),
+            Conv2dWeightNorm(hidden_channels, hidden_channels, 1, bias=False),
             nn.ELU(),
             # state [64, 32, 32]
-            nn.Conv2d(64, (nc * 3 + 1) * nmix, 1, bias=False)
+            Conv2dWeightNorm(64, (nc * 3 + 1) * nmix, 1, bias=False)
         )
-
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        # //////// z_transform //////////
-        m = self.z_transform[0]
-        assert isinstance(m, nn.ConvTranspose2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.z_transform[3]
-        assert isinstance(m, nn.ConvTranspose2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.z_transform[1]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
-        m = self.z_transform[4]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
-        m = self.z_transform[7]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
-        m = self.z_transform[6]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        # //////// output //////////
-        m = self.output[0]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.output[3]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.output[1]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
 
     def forward(self, x, z):
         h = self.z_transform(z)

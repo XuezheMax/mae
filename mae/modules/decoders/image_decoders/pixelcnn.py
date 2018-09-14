@@ -1,11 +1,11 @@
 __author__ = 'max'
 
-import math
 from overrides import overrides
 from typing import Dict, Tuple
 import torch
 import torch.nn as nn
 
+from mae.modules.networks.weight_norm import LinearWeightNorm, Conv2dWeightNorm
 from mae.modules.networks.auto_regressives.pixelcnn import PixelCNN
 from mae.modules.decoders.image_decoders.binary_image_decoder import BinaryImageDecoder
 
@@ -31,9 +31,8 @@ class PixelCNNDecoderBinaryImage28x28(BinaryImageDecoder):
         self.fm_latent = 4
         self.img_latent = 28 * 28 * self.fm_latent
         self.z_transform = nn.Sequential(
-            nn.Linear(nz, self.img_latent),
+            LinearWeightNorm(nz, self.img_latent),
             ReShape((self.fm_latent, 28, 28)),
-            nn.BatchNorm2d(self.fm_latent),
             nn.ELU(),
         )
 
@@ -47,43 +46,15 @@ class PixelCNNDecoderBinaryImage28x28(BinaryImageDecoder):
         hidden_channels = 64
         self.core = nn.Sequential(
             PixelCNN(self.nc + self.fm_latent, hidden_channels, len(kernal_sizes), kernal_sizes, self.nc),
-            nn.Conv2d(hidden_channels, hidden_channels, 1, bias=False),
-            nn.BatchNorm2d(hidden_channels),
+            Conv2dWeightNorm(hidden_channels, hidden_channels, 1, bias=False),
             nn.ELU(),
-            nn.Conv2d(hidden_channels, self.nc, 1, bias=False),
+            Conv2dWeightNorm(hidden_channels, self.nc, 1, bias=False),
             nn.Sigmoid(),
         )
-        self.reset_parameters()
 
         if ngpu > 1:
             self.z_transform = nn.DataParallel(self.z_transform, device_ids=list(range(ngpu)))
             self.core = nn.DataParallel(self.core, device_ids=list(range(ngpu)))
-
-    def reset_parameters(self):
-        # //////// z_transform //////////
-        m = self.z_transform[0]
-        assert isinstance(m, nn.Linear)
-        nn.init.xavier_uniform_(m.weight)
-        nn.init.constant_(m.bias, 0)
-
-        m = self.z_transform[2]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
-        # //////// core //////////
-        m = self.core[1]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.core[4]
-        assert isinstance(m, nn.Conv2d)
-        nn.init.xavier_normal_(m.weight)
-
-        m = self.core[2]
-        assert isinstance(m, nn.BatchNorm2d)
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
 
     @overrides
     def z_shape(self) -> Tuple:
