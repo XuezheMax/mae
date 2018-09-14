@@ -27,7 +27,7 @@ class AF2dMADEBlock(nn.Module):
             for _ in range(W):
                 mu = self.mu(y)
                 if self.logvar:
-                    logstd = self.logvar(y) * 0.5
+                    logstd = self.logvar(y).clamp(min=-10., max=10.) * 0.5
                 y = (x - mu).div(logstd.exp() + eps)
         return y, logstd.view(x.size(0), -1).sum(dim=1)
 
@@ -35,19 +35,10 @@ class AF2dMADEBlock(nn.Module):
         # [batch, x_shape]
         mu = self.mu(y)
         if self.logvar:
-            logstd = self.logvar(y) * 0.5
+            logstd = self.logvar(y).clamp(min=-10., max=10.) * 0.5
         else:
             logstd = mu.new_zeros(mu.size())
         x = mu + y * logstd.exp()
-        if x.cpu().numpy().max() > 1e200:
-            print('mu')
-            print(mu.max())
-            print(mu.min())
-            input()
-            print('std')
-            print(logstd.exp().max())
-            print(logstd.exp().min())
-            input()
         return x, logstd.view(mu.size(0), -1).sum(dim=1)
 
 

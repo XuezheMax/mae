@@ -214,10 +214,6 @@ class GaussianEncoder(Encoder):
                 logdet = 0.
             else:
                 z_normal, logdet = self.prior_flow.backward(z)
-                print('z')
-                print(z_normal.max())
-                print(z_normal.min())
-                input()
         # [batch, z_shape]
         log_probs = z_normal.pow(2) + math.log(math.pi * 2.)
         # [batch, z_shape] --> [batch, nz] -- > [batch]
