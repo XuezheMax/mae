@@ -197,6 +197,8 @@ def eval(eval_data, eval_index):
 
     recon_loss /= num_insts
     kl_loss /= num_insts
+    print(kl_loss)
+    input()
     pkl_mean /= num_batches
     pkl_mean_loss /= num_batches
     pkl_std /= num_batches
