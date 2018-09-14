@@ -219,8 +219,8 @@ class GaussianEncoder(Encoder):
             else:
                 z_normal, logdet = self.prior_flow.backward(z)
                 print('z')
-                print(z_normal.max()[0])
-                print(z_normal.min()[0])
+                print(z_normal.max())
+                print(z_normal.min())
                 input()
                 print('logdet')
                 print(logdet)
