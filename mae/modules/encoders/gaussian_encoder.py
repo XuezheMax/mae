@@ -218,9 +218,6 @@ class GaussianEncoder(Encoder):
                 print(z_normal.max())
                 print(z_normal.min())
                 input()
-                # print('logdet')
-                # print(logdet)
-                # input()
         # [batch, z_shape]
         log_probs = z_normal.pow(2) + math.log(math.pi * 2.)
         # [batch, z_shape] --> [batch, nz] -- > [batch]

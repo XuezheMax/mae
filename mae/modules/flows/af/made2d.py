@@ -41,10 +41,12 @@ class AF2dMADEBlock(nn.Module):
         x = mu + y * logstd.exp()
         if x.cpu().numpy().max() > 1e200:
             print('mu')
-            print(mu)
+            print(mu.max())
+            print(mu.min())
             input()
             print('std')
-            print(logstd.exp())
+            print(logstd.exp().max())
+            print(logstd.exp().min())
             input()
         return x, logstd.view(mu.size(0), -1).sum(dim=1)
 
