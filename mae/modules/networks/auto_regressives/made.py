@@ -78,7 +78,7 @@ class MADE2d(nn.Module):
             bias: using bias (default=True)
         """
         super(MADE2d, self).__init__()
-        self.activation = nn.ELU() # TODO other activation functions
+        self.activation = nn.ReLU() # TODO other activation functions
         assert num_hiddens > 0
         assert num_hiddens == len(hidden_kernels)
         kH, kW = _pair(kernel_size)
