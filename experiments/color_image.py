@@ -313,8 +313,8 @@ with torch.no_grad():
     # image_file = 'sample.png'
     # save_image(sample_x.cpu(), os.path.join(result_path, image_file), nrow=16, normalize=True, scale_each=True, range=(-1, 1))
 
-    print('Final val:')
-    eval(train_data, val_index)
+    # print('Final val:')
+    # eval(train_data, val_index)
     print('Final test:')
     eval(test_data, test_index)
     print('----------------------------------------------------------------------------------------------------------------------------')
