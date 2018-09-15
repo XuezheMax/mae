@@ -107,7 +107,7 @@ schedule = args.schedule
 
 patient = 0
 decay = 0
-max_decay = 6
+max_decay = 4
 
 
 def train(epoch):
