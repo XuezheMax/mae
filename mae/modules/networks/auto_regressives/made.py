@@ -77,22 +77,23 @@ class MADE2d(nn.Module):
         self.activation = nn.ELU() # TODO other activation functions
         assert num_hiddens > 0
         assert num_hiddens == len(hidden_kernels)
+        gain=0.05
         kH, kW = _pair(kernel_size)
         padding = (kH // 2, kW // 2)
-        self.top_layer = MaskedConv2d(in_channels, hidden_channels, kernel_size, mask_type='A', order=order, padding=padding, bias=bias, init_gain=0.05)
-        self.direct_connect = MaskedConv2d(in_channels, in_channels, kernel_size, mask_type='A', order=order, padding=padding, bias=False, init_gain=0.05)
+        self.top_layer = MaskedConv2d(in_channels, hidden_channels, kernel_size, mask_type='A', order=order, padding=padding, bias=bias, init_gain=gain)
+        self.direct_connect = MaskedConv2d(in_channels, in_channels, kernel_size, mask_type='A', order=order, padding=padding, bias=False, init_gain=gain)
 
         self.hidden_layers = []
         for i in range(num_hiddens - 1):
             hidden_kernel = _pair(hidden_kernels[i])
             padding = (hidden_kernel[0] // 2, hidden_kernel[1] // 2)
-            hidden_layer = MaskedConv2d(hidden_channels, hidden_channels, hidden_kernel, mask_type='B', order=order, padding=padding, bias=bias, init_gain=0.05)
+            hidden_layer = MaskedConv2d(hidden_channels, hidden_channels, hidden_kernel, mask_type='B', order=order, padding=padding, bias=bias, init_gain=gain)
             self.hidden_layers.append(hidden_layer)
         self.hidden_layers = nn.ModuleList(self.hidden_layers)
         assert num_hiddens == len(self.hidden_layers) + 1
         out_kernel = _pair(hidden_kernels[-1])
         padding = (out_kernel[0] // 2, out_kernel[1] // 2)
-        self.output_layer = MaskedConv2d(hidden_channels, in_channels, out_kernel, mask_type='B', order=order, padding=padding, bias=bias, init_gain=0.05)
+        self.output_layer = MaskedConv2d(hidden_channels, in_channels, out_kernel, mask_type='B', order=order, padding=padding, bias=bias, init_gain=gain)
 
     def forward(self, x):
         output = self.activation(self.top_layer(x))
