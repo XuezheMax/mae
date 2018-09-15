@@ -219,8 +219,7 @@ class GaussianEncoder(Encoder):
         # [batch, z_shape] --> [batch, nz] -- > [batch]
         log_probs = log_probs.view(z.size(0), -1).sum(dim=1) * -0.5 + logdet
 
-        bound = 15 * np.prod(self.z_shape())
-        return log_probs.clamp(min=-bound)
+        return log_probs
 
     @overrides
     def log_probability_posterior(self, x, z, distr_params=None):
@@ -255,10 +254,7 @@ class GaussianEncoder(Encoder):
         # [batch, nsamples, nz] --> [batch, nsamples]
         log_probs = log_probs.view(z_size[0], z_size[1], -1).sum(dim=2) * -0.5 + logdet
 
-        bound = 15 * np.prod(self.z_shape())
-        print(np.prod(self.z_shape()))
-        input()
-        return log_probs.clamp(min=-bound)
+        return log_probs
 
     @classmethod
     def from_params(cls, params: Dict) -> "GaussianEncoder":
