@@ -105,7 +105,7 @@ class MaskedConv2d(nn.Module):
 
     def __init__(self, in_channels, out_channels, kernel_size,
                  mask_type='A', order='A', masked_channels=None,
-                 stride=1, padding=0, dilation=1, groups=1, bias=True):
+                 stride=1, padding=0, dilation=1, groups=1, bias=True, init_gain=1.0):
         super(MaskedConv2d, self).__init__()
         assert mask_type in {'A', 'B'}
         assert order in {'A', 'B'}
@@ -150,10 +150,10 @@ class MaskedConv2d(nn.Module):
             reverse_mask = reverse_mask[:, :, :, ::-1]
             mask = reverse_mask.copy()
         self.mask.copy_(torch.from_numpy(mask).float())
-        self.reset_parameters()
+        self.reset_parameters(init_gain=init_gain)
 
-    def reset_parameters(self):
-        nn.init.xavier_normal_(self.weight_v, gain=0.1)
+    def reset_parameters(self, init_gain):
+        nn.init.xavier_normal_(self.weight_v, gain=init_gain)
         self.weight_v.data.mul_(self.mask)
         _norm = norm(self.weight_v, 0).data + 1e-8
         self.weight_g.data.copy_(_norm.log())
