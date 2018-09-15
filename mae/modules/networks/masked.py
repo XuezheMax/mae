@@ -187,7 +187,9 @@ class DownShiftConv2d(Conv2dWeightNorm):
     Conv2d with down shift operation.
     """
 
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, bias=True):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=(1, 1), bias=True):
+        assert len(stride) == 2
+        assert len(kernel_size) == 2
         super(DownShiftConv2d, self).__init__(in_channels, out_channels, kernel_size, stride=stride, bias=bias)
         self.shift_padding = ((kernel_size[1] - 1) // 2, (kernel_size[1] - 1) // 2, kernel_size[0] - 1, 0)
 
@@ -201,7 +203,7 @@ class DownRightShiftConv2d(DownShiftConv2d):
     Conv2d with dwon right shift operation.
     """
 
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, bias=True):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=(1, ), bias=True):
         super(DownRightShiftConv2d, self).__init__(in_channels, out_channels, kernel_size, stride=stride, bias=bias)
         self.shift_padding = (kernel_size[1] - 1, 0, kernel_size[0] - 1, 0)
 
@@ -213,9 +215,10 @@ class DownShiftConvTranspose2d(ConvTranspose2dWeightNorm):
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=(1, 1), bias=True):
         assert len(stride) == 2
+        assert len(kernel_size) == 2
         output_padding = (stride[0] - 1, stride[1] - 1)
         super(DownShiftConvTranspose2d, self).__init__(in_channels, out_channels, kernel_size, stride=stride, output_padding=output_padding, bias=bias)
-        self.padding_reduce = (self.kernel_size[0] - 1, (self.kernel_size[1] - 1) // 2)
+        self.padding_reduce = (kernel_size[0] - 1, (kernel_size[1] - 1) // 2)
 
     def forward(self, input):
         output = self.deconv(input)
@@ -230,7 +233,7 @@ class DownRightShiftConvTranspose2d(DownShiftConvTranspose2d):
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=(1, 1), bias=True):
         super(DownRightShiftConvTranspose2d, self).__init__(in_channels, out_channels, kernel_size, stride=stride, bias=bias)
-        self.padding_reduce = (self.kernel_size[0] - 1, self.kernel_size[1] - 1)
+        self.padding_reduce = (kernel_size[0] - 1, kernel_size[1] - 1)
 
     def forward(self, input):
         output = self.deconv(input)

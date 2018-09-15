@@ -48,17 +48,7 @@ class Conv2dWeightNorm(nn.Module):
 
     @overrides
     def extra_repr(self):
-        s = ('{in_channels}, {out_channels}, kernel_size={kernel_size}'
-             ', stride={stride}')
-        if self.padding != (0,) * len(self.padding):
-            s += ', padding={padding}'
-        if self.dilation != (1,) * len(self.dilation):
-            s += ', dilation={dilation}'
-        if self.groups != 1:
-            s += ', groups={groups}'
-        if self.bias is None:
-            s += ', bias=False'
-        return s.format(**self.__dict__)
+        return self.conv.extra_repr()
 
 
 class ConvTranspose2dWeightNorm(nn.Module):
@@ -88,16 +78,4 @@ class ConvTranspose2dWeightNorm(nn.Module):
 
     @overrides
     def extra_repr(self):
-        s = ('{in_channels}, {out_channels}, kernel_size={kernel_size}'
-             ', stride={stride}')
-        if self.padding != (0,) * len(self.padding):
-            s += ', padding={padding}'
-        if self.dilation != (1,) * len(self.dilation):
-            s += ', dilation={dilation}'
-        if self.output_padding != (0,) * len(self.output_padding):
-            s += ', output_padding={output_padding}'
-        if self.groups != 1:
-            s += ', groups={groups}'
-        if self.bias is None:
-            s += ', bias=False'
-        return s.format(**self.__dict__)
+        return self.deconv.extra_repr()
