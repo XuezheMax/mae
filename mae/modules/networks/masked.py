@@ -203,7 +203,7 @@ class DownRightShiftConv2d(DownShiftConv2d):
     Conv2d with dwon right shift operation.
     """
 
-    def __init__(self, in_channels, out_channels, kernel_size, stride=(1, ), bias=True):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=(1, 1), bias=True):
         super(DownRightShiftConv2d, self).__init__(in_channels, out_channels, kernel_size, stride=stride, bias=bias)
         self.shift_padding = (kernel_size[1] - 1, 0, kernel_size[0] - 1, 0)
 
