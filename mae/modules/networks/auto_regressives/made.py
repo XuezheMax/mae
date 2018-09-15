@@ -77,7 +77,7 @@ class MADE2d(nn.Module):
         self.activation = nn.ELU() # TODO other activation functions
         assert num_hiddens > 0
         assert num_hiddens == len(hidden_kernels)
-        gain=0.05
+        gain=0.1
         kH, kW = _pair(kernel_size)
         padding = (kH // 2, kW // 2)
         self.top_layer = MaskedConv2d(in_channels, hidden_channels, kernel_size, mask_type='A', order=order, padding=padding, bias=bias, init_gain=gain)

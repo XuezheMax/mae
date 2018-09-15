@@ -99,7 +99,8 @@ mae = MAE.from_params(params).to(device)
 print(args)
 
 lr = args.lr
-optimizer = optim.Adam(mae.parameters(), lr=lr)
+eps=1e-6
+optimizer = optim.Adam(mae.parameters(), lr=lr, eps=eps)
 step_decay = 0.999995
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
 decay_rate = 0.5
