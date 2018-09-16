@@ -89,14 +89,14 @@ class AF2dMADE(AF2d):
 
     @overrides
     def backward(self, y: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        bound = 100
-        invalid = y.ge(bound).sum().item() + y.le(-bound).sum().item()
-        if invalid > 0:
-            print('too large:')
-            print(invalid)
-            input()
+        # bound = 100
+        # invalid = y.ge(bound).sum().item() + y.le(-bound).sum().item()
+        # if invalid > 0:
+        #     print('too large:')
+        #     print(invalid)
+        #     input()
+        # y = y.clamp(min=-bound, max=bound)
 
-        y = y.clamp(min=-bound, max=bound)
         logdet_accum = y.new_zeros(y.size(0))
         for block in self.blocks:
             y, logdet = block.backward(y)
