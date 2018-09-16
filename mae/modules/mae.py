@@ -210,7 +210,9 @@ class MAE(nn.Module):
         return MAE(encoder, decoder)
 
     @classmethod
-    def load(cls, model_path) -> "MAE":
+    def load(cls, model_path, device) -> "MAE":
         params = json.load(open(os.path.join(model_path, 'config.json'), 'r'))
         model_name = os.path.join(model_path, 'model.pt')
-        return MAE.from_params(params).load_state_dict(torch.load(model_name))
+        mae = MAE.from_params(params)
+        mae.load_state_dict(torch.load(model_name, map_location=device))
+        return mae

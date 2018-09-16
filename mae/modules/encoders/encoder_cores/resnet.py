@@ -66,10 +66,10 @@ class ResnetEncoderCoreColorImage32x32(EncoderCore):
             # state [96, 8, 8]
             ResNet(96, [96, 96, 96], [1, 1, 1]),
             # state [96, 8, 8]
-            # Conv2dWeightNorm(96, 48, 1, 1, bias=False),
-            # nn.ELU(),
+            Conv2dWeightNorm(96, 48, 1, 1, bias=False),
+            nn.Tanh(),
             # state [48, 8, 8]
-            Conv2dWeightNorm(96, 2 * self.z_channels, 1, 1, bias=False),
+            Conv2dWeightNorm(48, 2 * self.z_channels, 1, 1, bias=False),
             # [2 * z_channels, 8, 8]
         )
 

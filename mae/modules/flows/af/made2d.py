@@ -12,6 +12,7 @@ from mae.modules.networks.auto_regressives.made import MADE2d
 class AF2dMADEBlock(nn.Module):
     def __init__(self, in_channels, kernel_size, num_hiddens, hidden_channels, hidden_kernels, order, bias=True, var=True):
         super(AF2dMADEBlock, self).__init__()
+        self.order = order
         self.mu = MADE2d(in_channels, kernel_size, num_hiddens, hidden_channels, hidden_kernels, order, bias=bias)
         if var:
             self.logvar = MADE2d(in_channels, kernel_size, num_hiddens, hidden_channels, hidden_kernels, order, bias=bias)
@@ -23,12 +24,19 @@ class AF2dMADEBlock(nn.Module):
         batch_size, in_channels, H, W = x.size()
         y = x.new_zeros(x.size())
         logstd = x.new_zeros(x.size())
-        for _ in range(H):
-            for _ in range(W):
+
+        index_H = list(range(H))
+        index_W = list(range(W))
+        if self.order == 'B':
+            index_H = index_H[::-1]
+            index_W = index_W[::-1]
+        for i in index_H:
+            for j in index_W:
                 mu = self.mu(y)
                 if self.logvar:
                     logstd = self.logvar(y) * 0.5
-                y = (x - mu).div(logstd.exp() + eps)
+                new_y = (x - mu).div(logstd.exp() + eps)
+                y[:, :, i, j] = new_y[:, :, i, j]
         return y, logstd.view(x.size(0), -1).sum(dim=1)
 
     def backward(self, y):
@@ -89,14 +97,6 @@ class AF2dMADE(AF2d):
 
     @overrides
     def backward(self, y: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        # bound = 100
-        # invalid = y.ge(bound).sum().item() + y.le(-bound).sum().item()
-        # if invalid > 0:
-        #     print('too large:')
-        #     print(invalid)
-        #     input()
-        # y = y.clamp(min=-bound, max=bound)
-
         logdet_accum = y.new_zeros(y.size(0))
         for block in self.blocks:
             y, logdet = block.backward(y)

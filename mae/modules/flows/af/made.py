@@ -12,6 +12,7 @@ from mae.modules.flows.af.af import AF
 class AFMADEBlock(nn.Module):
     def __init__(self, input_size, num_hiddens, hidden_size, order, bias=True, var=True):
         super(AFMADEBlock, self).__init__()
+        self.order = order
         self.mu = MADE(input_size, num_hiddens, hidden_size, order, bias=bias)
         if var:
             self.logvar = MADE(input_size, num_hiddens, hidden_size, order, bias=bias)
@@ -24,11 +25,13 @@ class AFMADEBlock(nn.Module):
         eps = 1e-12
         y = x.new_zeros(x.size())
         logstd = x.new_zeros(x.size())
-        for _ in range(self._input_size):
+        index = range(self._input_size) if self.order == 'A' else reversed(range(self._input_size))
+        for i in index:
             mu = self.mu(y)
             if self.logvar:
                 logstd = self.logvar(y) * 0.5
-            y = (x - mu).div(logstd.exp() + eps)
+            new_y = (x - mu).div(logstd.exp() + eps)
+            y[:, i] = new_y[:, i]
         return y, logstd.sum(dim=1)
 
     def backward(self, y):
