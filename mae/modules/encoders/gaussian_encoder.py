@@ -59,9 +59,6 @@ class GaussianEncoder(Encoder):
         std = logvar.mul(0.5).exp()
         # [batch, nsamples, z_shape]
         eps = std.new_empty(z_size[0], nsamples, *z_size[1:]).normal_()
-        print('eps')
-        print(eps.max())
-        print(eps.min())
         return eps.mul(std.unsqueeze(1)).add(mu.unsqueeze(1))
 
     @overrides
@@ -82,16 +79,6 @@ class GaussianEncoder(Encoder):
         mu, logvar = self.core(x)
         # [batch, nsamples, z_shape]
         z_normal = self.reparameterize(mu, logvar, nsamples)
-
-        print('mu')
-        print(mu.max())
-        print(mu.min())
-        print('logvar')
-        print(logvar.max())
-        print(logvar.min())
-        print('z_normal')
-        print(z_normal.max())
-        print(z_normal.min())
 
         z_size = z_normal.size()
         if self.posterior_flow is not None:

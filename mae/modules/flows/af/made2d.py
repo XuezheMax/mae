@@ -39,23 +39,6 @@ class AF2dMADEBlock(nn.Module):
         else:
             logstd = mu.new_zeros(mu.size())
         x = mu + y * logstd.exp()
-        print('y')
-        print(y.max())
-        print(y.min())
-        print('--------------------------')
-        if y.max().item() != y.max().item():
-            import sys
-            sys.exit(0)
-
-        # print('mu')
-        # print(mu.max())
-        # print(mu.min())
-        # print('logstd')
-        # print(logstd.max())
-        # print(logstd.min())
-        # print('x')
-        # print(x.max())
-        # print(x.min())
         return x, logstd.view(mu.size(0), -1).sum(dim=1)
 
 
@@ -106,6 +89,7 @@ class AF2dMADE(AF2d):
 
     @overrides
     def backward(self, y: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        y = y.clamp(min=-500, max=500)
         logdet_accum = y.new_zeros(y.size(0))
         for block in self.blocks:
             y, logdet = block.backward(y)
