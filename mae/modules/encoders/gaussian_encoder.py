@@ -59,6 +59,9 @@ class GaussianEncoder(Encoder):
         std = logvar.mul(0.5).exp()
         # [batch, nsamples, z_shape]
         eps = std.new_empty(z_size[0], nsamples, *z_size[1:]).normal_()
+        print('eps')
+        print(eps.max())
+        print(eps.min())
         return eps.mul(std.unsqueeze(1)).add(mu.unsqueeze(1))
 
     @overrides
