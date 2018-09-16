@@ -89,7 +89,7 @@ class AF2dMADE(AF2d):
 
     @overrides
     def backward(self, y: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        y = y.clamp(min=-500, max=500)
+        y = y.clamp(min=-300, max=300)
         logdet_accum = y.new_zeros(y.size(0))
         for block in self.blocks:
             y, logdet = block.backward(y)
