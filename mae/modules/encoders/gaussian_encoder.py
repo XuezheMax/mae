@@ -79,6 +79,17 @@ class GaussianEncoder(Encoder):
         mu, logvar = self.core(x)
         # [batch, nsamples, z_shape]
         z_normal = self.reparameterize(mu, logvar, nsamples)
+
+        print('mu')
+        print(mu.max())
+        print(mu.min())
+        print('logvar')
+        print(logvar.max())
+        print(logvar.min())
+        print('z_normal')
+        print(z_normal.max())
+        print(z_normal.min())
+
         z_size = z_normal.size()
         if self.posterior_flow is not None:
             # [batch * nsamples, flow_shape]

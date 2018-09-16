@@ -42,15 +42,20 @@ class AF2dMADEBlock(nn.Module):
         print('y')
         print(y.max())
         print(y.min())
-        print('mu')
-        print(mu.max())
-        print(mu.min())
-        print('logstd')
-        print(logstd.max())
-        print(logstd.min())
-        print('x')
-        print(x.max())
-        print(x.min())
+        print('--------------------------')
+        if y.max().item() != y.max().item():
+            import sys
+            sys.exit(0)
+
+        # print('mu')
+        # print(mu.max())
+        # print(mu.min())
+        # print('logstd')
+        # print(logstd.max())
+        # print(logstd.min())
+        # print('x')
+        # print(x.max())
+        # print(x.min())
         return x, logstd.view(mu.size(0), -1).sum(dim=1)
 
 
