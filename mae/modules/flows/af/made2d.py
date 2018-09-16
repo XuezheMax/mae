@@ -39,6 +39,18 @@ class AF2dMADEBlock(nn.Module):
         else:
             logstd = mu.new_zeros(mu.size())
         x = mu + y * logstd.exp()
+        print('y')
+        print(y.max())
+        print(y.min())
+        print('mu')
+        print(mu.max())
+        print(mu.min())
+        print('logstd')
+        print(logstd.max())
+        print(logstd.min())
+        print('x')
+        print(x.max())
+        print(x.min())
         return x, logstd.view(mu.size(0), -1).sum(dim=1)
 
 
