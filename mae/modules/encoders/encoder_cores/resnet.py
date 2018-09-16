@@ -3,6 +3,7 @@ __author__ = 'max'
 from typing import Tuple, Dict
 from overrides import overrides
 import torch.nn as nn
+import torch.nn.functional as F
 
 from mae.modules.encoders.encoder_cores.encoder_core import EncoderCore
 from mae.modules.networks.resnet import ResNet
@@ -56,20 +57,20 @@ class ResnetEncoderCoreColorImage32x32(EncoderCore):
         self.main = nn.Sequential(
             ResNet(self.nc, [48, 48], [1, 1]),
             # state [48, 32, 32]
-            Conv2dWeightNorm(48, 96, 3, 2, 1, bias=True),
+            Conv2dWeightNorm(48, 96, 3, 2, 1, bias=False),
             nn.ELU(),
             # state [96, 16, 16]
             ResNet(96, [96, 96], [1, 1]),
             # state [96, 16, 16]
-            Conv2dWeightNorm(96, 96, 3, 2, 1, bias=True),
+            Conv2dWeightNorm(96, 96, 3, 2, 1, bias=False),
             nn.ELU(),
             # state [96, 8, 8]
             ResNet(96, [96, 96, 96], [1, 1, 1]),
             # state [96, 8, 8]
-            Conv2dWeightNorm(96, 48, 1, 1, bias=True),
-            nn.Hardtanh(),
+            Conv2dWeightNorm(96, 48, 1, 1, bias=False),
+            nn.ELU(),
             # state [48, 8, 8]
-            Conv2dWeightNorm(48, 2 * self.z_channels, 1, 1, bias=True),
+            Conv2dWeightNorm(48, 2 * self.z_channels, 1, 1, bias=True)
             # [2 * z_channels, 8, 8]
         )
 
@@ -77,7 +78,8 @@ class ResnetEncoderCoreColorImage32x32(EncoderCore):
         # [batch, 2 * z_channels, 8, 8]
         output = self.main(input)
         # [batch, z_channels, 8, 8]
-        return output.chunk(2, 1)
+        mu, logvar = output.chunk(2, 1)
+        return mu, F.hardtanh(logvar, min_val=-7, max_val=7.)
 
     @overrides
     def output_size(self) -> Tuple:
