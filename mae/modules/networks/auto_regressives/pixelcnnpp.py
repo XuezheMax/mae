@@ -13,11 +13,13 @@ class GatedResnetBlock(nn.Module):
     def __init__(self, in_channels, h_channels=0, dropout=0.0):
         super(GatedResnetBlock, self).__init__()
         self.down_conv1 = DownShiftConv2d(in_channels, in_channels, kernel_size=(2, 3), bias=True)
-        self.down_conv2 = DownShiftConv2d(in_channels, 2 * in_channels, kernel_size=(2, 3), bias=True)
+        self.down_conv2 = DownShiftConv2d(in_channels, in_channels, kernel_size=(2, 3), bias=True)
+        self.down_conv3 = DownShiftConv2d(in_channels, 2 * in_channels, kernel_size=(2, 3), bias=True)
 
         self.down_right_conv1 = DownRightShiftConv2d(in_channels, in_channels, kernel_size=(2, 2), bias=True)
+        self.down_right_conv2 = DownRightShiftConv2d(in_channels, in_channels, kernel_size=(2, 2), bias=True)
         self.nin = Conv2dWeightNorm(in_channels, in_channels, kernel_size=(1, 1))
-        self.down_right_conv2 = DownRightShiftConv2d(in_channels, 2 * in_channels, kernel_size=(2, 2), bias=True)
+        self.down_right_conv3 = DownRightShiftConv2d(in_channels, 2 * in_channels, kernel_size=(2, 2), bias=True)
 
         if h_channels:
             self.h_conv1 = Conv2dWeightNorm(h_channels, in_channels, kernel_size=(3, 3), padding=1)
@@ -35,16 +37,18 @@ class GatedResnetBlock(nn.Module):
             hc = 0
 
         c1 = F.elu(self.down_conv1(x1))
+        c1 = F.elu(self.down_conv2(c1))
         # dropout
         c1 = self.dropout(c1)
-        a1, b1 = (self.down_conv2(c1) + hc).chunk(2, 1)
+        a1, b1 = (self.down_conv3(c1) + hc).chunk(2, 1)
         c1 = F.elu(a1 * torch.sigmoid(b1) + x1)
 
-        c2 = self.down_right_conv1(x2)
+        c2 = F.elu(self.down_right_conv1(x2))
+        c2 = self.down_right_conv2(c2)
         c2 = F.elu(c2 + self.nin(c1))
         # dropout
         c2 = self.dropout(c2)
-        a2, b2 = (self.down_right_conv2(c2) + hc).chunk(2, 1)
+        a2, b2 = (self.down_right_conv3(c2) + hc).chunk(2, 1)
         c2 = F.elu(a2 * torch.sigmoid(b2) + x2)
 
         return c1, c2
