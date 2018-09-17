@@ -4,16 +4,12 @@ import sys
 root_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 sys.path.append(root_path)
 
-import time
-import json
 import argparse
 import random
 import numpy as np
 
 import torch
-from torch import optim
 from torchvision.utils import save_image
-from torch.nn.utils import clip_grad_norm_
 
 from mae.data import load_datasets
 from mae.modules import MAE
