@@ -7,7 +7,6 @@ import torch.nn.functional as F
 
 from mae.modules.encoders.encoder_cores.encoder_core import EncoderCore
 from mae.modules.networks.dense import DenseNet
-from mae.modules.networks.resnet import ResNet
 from mae.modules.networks.weight_norm import Conv2dWeightNorm
 
 
