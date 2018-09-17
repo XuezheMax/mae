@@ -20,16 +20,17 @@ class GatedResnetBlock(nn.Module):
         self.down_right_conv2 = DownRightShiftConv2d(in_channels, 2 * in_channels, kernel_size=(2, 2), bias=True)
 
         if h_channels:
-            self.h_conv = Conv2dWeightNorm(h_channels, 2 * in_channels, kernel_size=(3, 3), padding=1)
+            self.h_conv1 = Conv2dWeightNorm(h_channels, in_channels, kernel_size=(3, 3), padding=1)
+            self.h_conv2 = Conv2dWeightNorm(in_channels, 2 * in_channels, kernel_size=(3, 3), padding=1)
         else:
-            self.h_conv = None
-            self.h_bn = None
+            self.h_conv1 = None
+            self.h_conv2 = None
 
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x1, x2, h=None):
         if h is not None:
-            hc = self.h_conv(h)
+            hc = self.h_conv2(F.elu(self.h_conv1(h)))
         else:
             hc = 0
 
