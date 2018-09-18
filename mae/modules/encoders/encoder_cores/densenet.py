@@ -47,7 +47,7 @@ class DenseNetEncoderCoreColorImage32x32(EncoderCore):
         output = self.main(input)
         # [batch, z_channels, 8, 8]
         mu, logvar = output.chunk(2, 1)
-        return mu, logvar
+        return mu, F.hardtanh(logvar, min_val=-7, max_val=7.)
 
     @overrides
     def output_size(self) -> Tuple:
