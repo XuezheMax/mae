@@ -215,4 +215,4 @@ class MAE(nn.Module):
         model_name = os.path.join(model_path, 'model.pt')
         mae = MAE.from_params(params)
         mae.load_state_dict(torch.load(model_name, map_location=device))
-        return mae
+        return mae.to(device)
