@@ -27,6 +27,7 @@ parser.add_argument('--seed', type=int, default=524287, metavar='S', help='rando
 parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
 parser.add_argument('--eta', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--gamma', type=float, default=0.0, metavar='N', help='')
+parser.add_argument('--free-bits', type=float, default=0.0, metavar='N', help='free bits used in training.')
 parser.add_argument('--schedule', type=int, default=20, help='schedule for learning rate decay')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 
@@ -45,6 +46,7 @@ test_k = 5
 k = 4096
 eta = args.eta
 gamma = args.gamma
+free_bits = args.free_bits
 
 model_path = args.model_path
 model_name = os.path.join(model_path, 'model.pt')
@@ -125,7 +127,7 @@ def train(epoch):
 
         batch_size = len(binarized_data)
         optimizer.zero_grad()
-        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binarized_data, nsamples=training_k, eta=eta, gamma=gamma)
+        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binarized_data, nsamples=training_k, eta=eta, gamma=gamma, free_bits=free_bits)
         loss.backward()
         clip_grad_norm_(mae.parameters(), 5.0)
         optimizer.step()

@@ -97,7 +97,7 @@ class MAE(nn.Module):
         z_shape_dec = self.decoder.z_shape()
         return self.decoder.decode(z.view(z.size(0), *z_shape_dec), random_sample)
 
-    def loss(self, x, nsamples, beta=1.0, eta=0.0, gamma=0.0):
+    def loss(self, x, nsamples, eta=0.0, gamma=0.0, free_bits=0.0):
         """
 
         Args:
@@ -105,12 +105,12 @@ class MAE(nn.Module):
                 The input data with shape =[batch, *]
             nsample: int
                 Number of samples for each data instance
-            beta: float
-                weight of KL
             eta: float
                 weight of posterior KL mean
             gamma: float
                 weight of posterior KL std
+            free_bits: float
+                free bits for KL
 
         Returns: Tensor1, Tensor2, Tensor3, Tensor4, Tensor5, Tensor6, Tensor7
             Tensor1: loss objective shape=[1]
@@ -136,7 +136,7 @@ class MAE(nn.Module):
 
         recon = reconstruct_err.mean(dim=1)
 
-        loss = recon.mean() + beta * KL.mean() + loss_postKL_mean + loss_postKL_std
+        loss = recon.mean() + KL.mean().clamp(min=free_bits) + loss_postKL_mean + loss_postKL_std
         return loss, recon, KL, postKL_mean, postKL_std, loss_postKL_mean, loss_postKL_std
 
     def reconstruct(self, x, k=50, random_sample=False):
