@@ -29,7 +29,7 @@ parser.add_argument('--lr', type=float, default=0.001, help='initial learning ra
 parser.add_argument('--eta', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--gamma', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--free-bits', type=float, default=0.0, metavar='N', help='free bits used in training.')
-parser.add_argument('--schedule', type=int, default=20, help='schedule for learning rate decay')
+parser.add_argument('--schedule', type=int, default=50, help='schedule for learning rate decay')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 
 args = parser.parse_args()
@@ -101,7 +101,9 @@ mae = MAE.from_params(params).to(device)
 print(args)
 
 lr = args.lr
-optimizer = optim.Adam(mae.parameters(), lr=lr)
+betas = (0.95, 0.9995)
+eps = 1e-6
+optimizer = optim.Adam(mae.parameters(), lr=lr, betas=betas, eps=eps)
 step_decay = 0.999995
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
 decay_rate = 0.5
@@ -109,7 +111,7 @@ schedule = args.schedule
 
 patient = 0
 decay = 0
-max_decay = 4
+max_decay = 3
 
 
 def train(epoch):
@@ -291,7 +293,7 @@ for epoch in range(1, args.epochs + 1):
     elif patient >= schedule:
         mae.load_state_dict(torch.load(model_name))
         lr = lr * decay_rate
-        optimizer = optim.Adam(mae.parameters(), lr=lr)
+        optimizer = optim.Adam(mae.parameters(), lr=lr, betas=betas, eps=eps)
         scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
         patient = 0
         decay +=1
