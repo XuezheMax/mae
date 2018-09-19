@@ -101,9 +101,7 @@ mae = MAE.from_params(params).to(device)
 print(args)
 
 lr = args.lr
-betas = (0.95, 0.9995)
-eps = 1e-6
-optimizer = optim.Adam(mae.parameters(), lr=lr, betas=betas, eps=eps)
+optimizer = optim.Adam(mae.parameters(), lr=lr)
 step_decay = 0.999995
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
 decay_rate = 0.5
@@ -293,7 +291,7 @@ for epoch in range(1, args.epochs + 1):
     elif patient >= schedule:
         mae.load_state_dict(torch.load(model_name))
         lr = lr * decay_rate
-        optimizer = optim.Adam(mae.parameters(), lr=lr, betas=betas, eps=eps)
+        optimizer = optim.Adam(mae.parameters(), lr=lr)
         scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
         patient = 0
         decay +=1
