@@ -15,7 +15,7 @@ from torch import optim
 from torchvision.utils import save_image
 from torch.nn.utils import clip_grad_norm_
 
-from mae.data import load_datasets
+from mae.data import load_datasets, iterate_minibatches, get_batch
 from mae.modules import MAE
 
 parser = argparse.ArgumentParser(description='MAE Binary Image Example')
@@ -60,26 +60,6 @@ result_path = os.path.join(model_path, 'images')
 if not os.path.exists(result_path):
     os.makedirs(result_path)
 
-
-def get_batch(data, indices):
-    imgs = []
-    labels = []
-    for index in indices:
-        img, label = data[index]
-        imgs.append(img)
-        labels.append(label)
-    return torch.stack(imgs, dim=0), torch.LongTensor(labels)
-
-
-def iterate_minibatches(data, indices, batch_size, shuffle):
-    if shuffle:
-        np.random.shuffle(indices)
-
-    for start_idx in range(0, len(indices), batch_size):
-        excerpt = indices[start_idx:start_idx + batch_size]
-        yield get_batch(data, excerpt)
-
-
 dataset = args.data
 train_data, test_data, n_val = load_datasets(dataset)
 
@@ -106,6 +86,7 @@ step_decay = 0.999995
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
 decay_rate = 0.5
 schedule = args.schedule
+lr_min = 0.5e-4
 
 patient = 0
 decay = 0
@@ -304,7 +285,7 @@ for epoch in range(1, args.epochs + 1):
         best_bpd, best_epoch))
     print('============================================================================================================================')
 
-    if decay == max_decay:
+    if decay == max_decay or lr < lr_min:
         break
 
 mae.load_state_dict(torch.load(model_name))

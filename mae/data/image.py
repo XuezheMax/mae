@@ -25,18 +25,30 @@ def load_omniglot():
     omni_raw = scipy.io.loadmat('data/omniglot/chardata.mat')
 
     train_data = reshape_data(omni_raw['data']).astype(np.float32)
+    train_label = omni_raw['target'].argmax(axis=0)
     test_data = reshape_data(omni_raw['testdata']).astype(np.float32)
-    return train_data, test_data, 2345
+    test_label = omni_raw['testtarget'].argmax(axis=0)
+
+    train_data = torch.from_numpy(train_data).float()
+    train_label = torch.from_numpy(train_label).long()
+    test_data = torch.from_numpy(test_data).float()
+    test_label = torch.from_numpy(test_label).long()
+
+    return [(train_data[i], train_label[i]) for i in range(len(train_data))], \
+           [(test_data[i], test_label[i]) for i in range(len(test_data))], \
+           2345
 
 
 def load_mnist():
-    train_data, _ = torch.load('data/mnist/processed/training.pt')
-    test_data, _ = torch.load('data/mnist/processed/test.pt')
+    train_data, train_label = torch.load('data/mnist/processed/training.pt')
+    test_data, test_label = torch.load('data/mnist/processed/test.pt')
 
     train_data = train_data.float().div(255).unsqueeze(1)
     test_data = test_data.float().div(255).unsqueeze(1)
 
-    return train_data.numpy(), test_data.numpy(), 2000
+    return [(train_data[i], train_label[i]) for i in range(len(train_data))], \
+           [(test_data[i], test_label[i]) for i in range(len(test_data))], \
+           2000
 
 
 def load_lsun(data_path):
@@ -73,3 +85,27 @@ def load_cifar10():
                                      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                                  ]))
     return train_data, test_data, 2000
+
+
+def get_batch(data, indices):
+    imgs = []
+    labels = []
+    for index in indices:
+        img, label = data[index]
+        imgs.append(img)
+        labels.append(label)
+    return torch.stack(imgs, dim=0), torch.LongTensor(labels)
+
+
+def iterate_minibatches(data, indices, batch_size, shuffle):
+    if shuffle:
+        np.random.shuffle(indices)
+
+    for start_idx in range(0, len(indices), batch_size):
+        excerpt = indices[start_idx:start_idx + batch_size]
+        yield get_batch(data, excerpt)
+
+def binarize_data(data):
+    def binarize_image(img):
+        return torch.rand(img.size()).type_as(img).le(img).float()
+    return [(binarize_image(img), label) for img, label in data]

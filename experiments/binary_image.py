@@ -15,7 +15,7 @@ from torch import optim
 from torchvision.utils import save_image
 from torch.nn.utils import clip_grad_norm_
 
-from mae.data import load_datasets
+from mae.data import load_datasets, iterate_minibatches, get_batch, binarize_data
 from mae.modules import MAE
 
 parser = argparse.ArgumentParser(description='MAE Binary Image Example')
@@ -57,42 +57,30 @@ result_path = os.path.join(model_path, 'images')
 if not os.path.exists(result_path):
     os.makedirs(result_path)
 
-
-def iterate_minibatches(data, batch_size, shuffle, binarize):
-    if shuffle:
-        indices = np.arange(len(data))
-        np.random.shuffle(indices)
-    else:
-        indices = None
-
-    for start_idx in range(0, len(data), batch_size):
-        if shuffle:
-            excerpt = indices[start_idx:start_idx + batch_size]
-        else:
-            excerpt = slice(start_idx, start_idx + batch_size)
-        if binarize:
-            yield np.less_equal(np.random.random(data[excerpt].shape), data[excerpt]).astype(np.float32)
-        else:
-            yield data[excerpt]
-
-
 dataset = args.data
 train_data, test_data, n_val = load_datasets(dataset)
 
-np.random.shuffle(train_data)
-np.random.shuffle(test_data)
+train_index = np.arange(len(train_data))
+np.random.shuffle(train_index)
+val_index = train_index[-n_val:]
+train_index = train_index[:-n_val]
 
-val_data = train_data[-n_val:]
-train_data = train_data[:-n_val]
+# create val data
+val_data = get_batch(train_data, val_index)
+val_index = np.arange(n_val)
+train_data = get_batch(train_data, train_index)
+train_index = np.arange(len(train_data))
 
-val_binarized_data = np.concatenate([np.less_equal(np.random.random(val_data.shape), val_data).astype(np.float32) for _ in range(5)], axis=0)
-test_binarized_data = np.concatenate([np.less_equal(np.random.random(test_data.shape), test_data).astype(np.float32) for _ in range(5)], axis=0)
+test_index = np.arange(len(test_data))
+np.random.shuffle(test_index)
 
-np.random.shuffle(val_binarized_data)
-np.random.shuffle(test_binarized_data)
-print(train_data.shape)
-print(val_binarized_data.shape)
-print(test_binarized_data.shape)
+
+val_binary_data = binarize_data(val_data)
+test_binary_data = binarize_data(test_data)
+
+print(len(train_data))
+print(len(val_data))
+print(len(test_data))
 
 params = json.load(open(args.config, 'r'))
 json.dump(params, open(os.path.join(model_path, 'config.json'), 'w'), indent=2)
@@ -101,8 +89,11 @@ print(args)
 
 lr = 1e-3
 optimizer = optim.Adam(mae.parameters(), lr=lr)
+step_decay = 0.999995
+scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
 decay_rate = 0.5
 schedule = args.schedule
+lr_min = 0.5e-4
 
 patient = 0
 decay = 0
@@ -122,15 +113,16 @@ def train(epoch):
     num_batches = 0
 
     num_back = 0
-    for batch_idx, binarized_data in enumerate(iterate_minibatches(train_data, args.batch_size, True, True)):
-        binarized_data = torch.from_numpy(binarized_data).to(device).float()
+    for batch_idx, (data, _) in enumerate(iterate_minibatches(train_data, train_index, args.batch_size, True)):
+        binary_data = binarize_data(data).to(device)
 
-        batch_size = len(binarized_data)
+        batch_size = len(binary_data)
         optimizer.zero_grad()
-        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binarized_data, nsamples=training_k, eta=eta, gamma=gamma, free_bits=free_bits)
+        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binary_data, nsamples=training_k, eta=eta, gamma=gamma, free_bits=free_bits)
         loss.backward()
         clip_grad_norm_(mae.parameters(), 5.0)
         optimizer.step()
+        scheduler.step()
 
         with torch.no_grad():
             num_insts += batch_size
@@ -166,7 +158,7 @@ def train(epoch):
         pkl_mean_loss / num_batches, pkl_std_loss / num_batches))
 
 
-def eval(eval_data):
+def eval(eval_data, eval_index):
     mae.eval()
     recon_loss = 0.
     kl_loss = 0.
@@ -176,11 +168,11 @@ def eval(eval_data):
     pkl_std = 0.
     num_insts = 0
     num_batches = 0
-    for i, binarized_data in enumerate(iterate_minibatches(eval_data, 512, False, False)):
-        binarized_data = torch.from_numpy(binarized_data).to(device).float()
+    for i, (binary_data, _) in enumerate(iterate_minibatches(eval_data, eval_index, 512, False)):
+        binary_data = binary_data.to(device)
 
-        batch_size = len(binarized_data)
-        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binarized_data, nsamples=test_k, eta=eta, gamma=gamma)
+        batch_size = len(binary_data)
+        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binary_data, nsamples=test_k, eta=eta, gamma=gamma)
 
         num_insts += batch_size
         num_batches += 1
@@ -209,18 +201,19 @@ def eval(eval_data):
 def reconstruct():
     mae.eval()
     n = 128
-    data = torch.from_numpy(test_data[0:n]).to(device).float()
-    binarized_data = torch.ge(data, 0.5).float()
+    data, _ = get_batch(test_data, test_index[:n])
+    data = data.to(device)
+    binary_data = torch.ge(data, 0.5).float()
 
-    recon_img, recon_probs = mae.reconstruct(binarized_data)
-    comparison = torch.cat([data, recon_probs, binarized_data, recon_img], dim=0).cpu()
+    recon_img, recon_probs = mae.reconstruct(binary_data)
+    comparison = torch.cat([data, recon_probs, binary_data, recon_img], dim=0).cpu()
     reorder_index = torch.from_numpy(np.array([[i + j * n for j in range(4)] for i in range(n)])).view(-1)
     comparison = comparison[reorder_index]
     image_file = 'reconstruct.fixed.png'
     save_image(comparison, os.path.join(result_path, image_file), nrow=32)
 
-    recon_img, recon_probs = mae.reconstruct(binarized_data, random_sample=True)
-    comparison = torch.cat([data, recon_probs, binarized_data, recon_img], dim=0).cpu()
+    recon_img, recon_probs = mae.reconstruct(binary_data, random_sample=True)
+    comparison = torch.cat([data, recon_probs, binary_data, recon_img], dim=0).cpu()
     reorder_index = torch.from_numpy(np.array([[i + j * n for j in range(4)] for i in range(n)])).view(-1)
     comparison = comparison[reorder_index]
     image_file = 'reconstruct.random.png'
@@ -235,12 +228,12 @@ def calc_nll():
     kl_err = 0.
     nll_iw = 0.
     num_insts = 0
-    for i, binarized_data in enumerate(iterate_minibatches(test_binarized_data, 1, False, False)):
-        binarized_data = torch.from_numpy(binarized_data).to(device).float()
+    for i, (binary_data, _) in enumerate(iterate_minibatches(test_binary_data, test_index, 1, False)):
+        binary_data = binary_data.to(device)
 
-        batch_size = len(binarized_data)
+        batch_size = len(binary_data)
         num_insts += batch_size
-        (elbo, recon, kl), iw = mae.nll(binarized_data, k)
+        (elbo, recon, kl), iw = mae.nll(binary_data, k)
         nll_elbo += elbo.sum()
         recon_err += recon.sum()
         kl_err += kl.sum()
@@ -266,9 +259,10 @@ best_pkl_std_loss = 1e12
 
 for epoch in range(1, args.epochs + 1):
     train(epoch)
+    lr = scheduler.get_lr()[0]
     print('----------------------------------------------------------------------------------------------------------------------------')
     with torch.no_grad():
-        loss, recon, kl, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss = eval(val_binarized_data)
+        loss, recon, kl, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss = eval(val_binary_data, val_index)
     elbo = recon + kl
     if elbo < best_elbo:
         patient = 0
@@ -287,6 +281,7 @@ for epoch in range(1, args.epochs + 1):
         mae.load_state_dict(torch.load(model_name))
         lr = lr * decay_rate
         optimizer = optim.Adam(mae.parameters(), lr=lr)
+        scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
         patient = 0
         decay +=1
     else:
@@ -298,7 +293,7 @@ for epoch in range(1, args.epochs + 1):
         best_epoch))
     print('============================================================================================================================')
 
-    if decay == max_decay:
+    if decay == max_decay or lr < lr_min:
         break
 
 mae.load_state_dict(torch.load(model_name))
@@ -312,9 +307,9 @@ with torch.no_grad():
     save_image(sample_probs.cpu(), os.path.join(result_path, image_file), nrow=20)
 
     print('Final val:')
-    eval(val_binarized_data)
+    eval(val_binary_data, val_index)
     print('Final test:')
-    eval(test_binarized_data)
+    eval(test_binary_data, test_index)
     print('----------------------------------------------------------------------------------------------------------------------------')
     calc_nll()
     print('============================================================================================================================')

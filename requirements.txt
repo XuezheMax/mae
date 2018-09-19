@@ -17,3 +17,8 @@ scipy
 
 # Used by LSUN data set
 lmdb
+
+# for visualization
+scikit-learn
+pandas>=0.23.4
+ggplot
