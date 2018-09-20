@@ -21,7 +21,7 @@ from mae.modules import MAE
 parser = argparse.ArgumentParser(description='MAE Binary Image Example')
 parser.add_argument('--data', choices=['mnist', 'omniglot', 'cifar10', 'lsun'], help='data set', required=True)
 parser.add_argument('--mode', choices=['generate', 'tsne'], help='mode', required=True)
-parser.add_argument('--seed', type=int, default=524287, metavar='S', help='random seed (default: 524287)')
+parser.add_argument('--seed', type=int, default=65537, metavar='S', help='random seed (default: 524287)')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 
 args = parser.parse_args()
@@ -100,7 +100,7 @@ def encode(visual_data, data_index):
 def generate_x():
     mae.eval()
     print("generating images:")
-    reconstruct(random_sample=False)
+    reconstruct(random_sample=True)
     sample_z, _ = mae.sample_from_proir(256, device=device)
     sample_x, _ = mae.decode(sample_z, random_sample=True)
     image_file = 'sample.png'
