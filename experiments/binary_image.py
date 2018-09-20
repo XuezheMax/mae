@@ -66,9 +66,9 @@ val_index = train_index[-n_val:]
 train_index = train_index[:-n_val]
 
 # create val data
-val_data = train_data[val_index]
+val_data = [train_data[id] for id in val_index]
 val_index = np.arange(n_val)
-train_data = train_data[train_index]
+train_data = [train_data[id] for id in train_index]
 train_index = np.arange(len(train_data))
 
 test_index = np.arange(len(test_data))
