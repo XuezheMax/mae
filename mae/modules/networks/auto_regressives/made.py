@@ -25,7 +25,7 @@ class MADE(nn.Module):
         self.input_size = input_size
         self.num_hiddens = num_hiddens
         self.hidden_size = hidden_size
-        self.activation = nn.ELU()  # TODO other activation functions
+        self.activation = nn.ReLU()  # TODO other activation functions
 
         assert num_hiddens > 0
         total_units = input_size - 1
