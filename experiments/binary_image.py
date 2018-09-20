@@ -74,13 +74,19 @@ train_index = np.arange(len(train_data))
 test_index = np.arange(len(test_data))
 np.random.shuffle(test_index)
 
-
-val_binary_data = binarize_data(val_data)
-test_binary_data = binarize_data(test_data)
+val_binary_data = []
+test_binary_data = []
+for _ in range(5):
+    val_binary_data.extend(binarize_data(val_data))
+    test_binary_data.extend(binarize_data(test_data))
+val_binary_index = np.arange(len(val_binary_data))
+test_binary_index = np.arange(len(test_binary_data))
+np.random.shuffle(val_binary_index)
+np.random.shuffle(test_binary_index)
 
 print(len(train_data))
-print(len(val_data))
-print(len(test_data))
+print(len(val_binary_data))
+print(len(test_binary_data))
 
 params = json.load(open(args.config, 'r'))
 json.dump(params, open(os.path.join(model_path, 'config.json'), 'w'), indent=2)
@@ -228,7 +234,7 @@ def calc_nll():
     kl_err = 0.
     nll_iw = 0.
     num_insts = 0
-    for i, (binary_data, _) in enumerate(iterate_minibatches(test_binary_data, test_index, 1, False)):
+    for i, (binary_data, _) in enumerate(iterate_minibatches(test_binary_data, test_binary_index, 1, False)):
         binary_data = binary_data.to(device)
 
         batch_size = len(binary_data)
@@ -262,7 +268,7 @@ for epoch in range(1, args.epochs + 1):
     lr = scheduler.get_lr()[0]
     print('----------------------------------------------------------------------------------------------------------------------------')
     with torch.no_grad():
-        loss, recon, kl, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss = eval(val_binary_data, val_index)
+        loss, recon, kl, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss = eval(val_binary_data, val_binary_index)
     elbo = recon + kl
     if elbo < best_elbo:
         patient = 0
@@ -307,9 +313,9 @@ with torch.no_grad():
     save_image(sample_probs.cpu(), os.path.join(result_path, image_file), nrow=20)
 
     print('Final val:')
-    eval(val_binary_data, val_index)
+    eval(val_binary_data, val_binary_index)
     print('Final test:')
-    eval(test_binary_data, test_index)
+    eval(test_binary_data, test_binary_index)
     print('----------------------------------------------------------------------------------------------------------------------------')
     calc_nll()
     print('============================================================================================================================')
