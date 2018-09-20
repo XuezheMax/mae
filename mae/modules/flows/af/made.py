@@ -71,7 +71,7 @@ class AFMADE(AF):
         super(AFMADE, self).__init__(input_size)
         self.num_blocks = num_blocks
         self.num_hiddens = num_hiddens
-        hidden_size = input_size * 10 if hidden_size is None else hidden_size
+        hidden_size = input_size * 8 if hidden_size is None else hidden_size
         self.hidden_size = hidden_size
         self.blocks = []
         for i in range(num_blocks):
