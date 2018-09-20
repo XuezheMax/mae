@@ -99,7 +99,7 @@ step_decay = 0.999995
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
 decay_rate = 0.5
 schedule = args.schedule
-lr_min = 0.5e-4
+lr_min = 0.25e-4
 
 patient = 0
 decay = 0
