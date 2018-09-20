@@ -127,7 +127,7 @@ def tsne():
     df['label'] = df['label'].apply(lambda i: str(i))
 
     visual_index = np.arange(len(labels))
-    tsne = TSNE(n_components=2, verbose=1, perplexity=30, n_iter=300)
+    tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=1000)
     tsne_results = tsne.fit_transform(df.loc[visual_index, feat_cols].values)
 
     df_tsne = df.loc[visual_index, :].copy()
