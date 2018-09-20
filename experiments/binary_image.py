@@ -15,7 +15,7 @@ from torch import optim
 from torchvision.utils import save_image
 from torch.nn.utils import clip_grad_norm_
 
-from mae.data import load_datasets, iterate_minibatches, get_batch, binarize_data
+from mae.data import load_datasets, iterate_minibatches, get_batch, binarize_data, binarize_image
 from mae.modules import MAE
 
 parser = argparse.ArgumentParser(description='MAE Binary Image Example')
@@ -114,7 +114,7 @@ def train(epoch):
 
     num_back = 0
     for batch_idx, (data, _) in enumerate(iterate_minibatches(train_data, train_index, args.batch_size, True)):
-        binary_data = binarize_data(data).to(device)
+        binary_data = binarize_image(data).to(device)
 
         batch_size = len(binary_data)
         optimizer.zero_grad()

@@ -105,7 +105,10 @@ def iterate_minibatches(data, indices, batch_size, shuffle):
         excerpt = indices[start_idx:start_idx + batch_size]
         yield get_batch(data, excerpt)
 
+
+def binarize_image(img):
+    return torch.rand(img.size()).type_as(img).le(img).float()
+
+
 def binarize_data(data):
-    def binarize_image(img):
-        return torch.rand(img.size()).type_as(img).le(img).float()
     return [(binarize_image(img), label) for img, label in data]
