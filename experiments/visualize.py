@@ -20,6 +20,7 @@ from mae.modules import MAE
 
 parser = argparse.ArgumentParser(description='MAE Binary Image Example')
 parser.add_argument('--data', choices=['mnist', 'omniglot', 'cifar10', 'lsun'], help='data set', required=True)
+parser.add_argument('--mode', choices=['generate', 'tsne'], help='mode', required=True)
 parser.add_argument('--seed', type=int, default=524287, metavar='S', help='random seed (default: 524287)')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 
@@ -47,9 +48,11 @@ np.random.shuffle(test_index)
 
 mae = MAE.load(model_path, device)
 
+mode = args.mode
+
 
 def reconstruct(random_sample):
-    n = 1
+    n = 128
     data, _ = get_batch(test_data, test_index[:n])
     data = data.to(device)
     if not colorful:
@@ -94,18 +97,20 @@ def encode(visual_data, data_index):
     return torch.cat(latent_codes, dim=0), torch.cat(labels, dim=0)
 
 
-with torch.no_grad():
+def generate_x():
     mae.eval()
-    # print("generating images:")
-    # reconstruct(random_sample=False)
-    # sample_z, (z_normal, logdet) = mae.sample_from_proir(2, device=device)
-    # sample_x, _ = mae.decode(sample_z, random_sample=True)
-    # image_file = 'sample.png'
-    # if colorful:
-    #     save_image(sample_x.cpu(), os.path.join(result_path, image_file), nrow=16, normalize=True, scale_each=True, range=(-1, 1))
-    # else:
-    #     save_image(sample_x.cpu(), os.path.join(result_path, image_file), nrow=16)
+    print("generating images:")
+    reconstruct(random_sample=False)
+    sample_z, _ = mae.sample_from_proir(256, device=device)
+    sample_x, _ = mae.decode(sample_z, random_sample=True)
+    image_file = 'sample.png'
+    if colorful:
+        save_image(sample_x.cpu(), os.path.join(result_path, image_file), nrow=16, normalize=True, scale_each=True, range=(-1, 1))
+    else:
+        save_image(sample_x.cpu(), os.path.join(result_path, image_file), nrow=16)
 
+
+def tsne():
     time_start = time.time()
     print('encoding:')
     latent_codes_train, labels_train = encode(train_data, train_index)
@@ -131,3 +136,12 @@ with torch.no_grad():
 
     chart = ggplot(df_tsne, aes(x='x-tsne', y='y-tsne', color='label')) + geom_point(size=70, alpha=0.1) + ggtitle("tSNE dimensions colored by digit")
     chart.save(os.path.join(result_path, 'tSNE.png'))
+
+
+with torch.no_grad():
+    if mode == 'generate':
+        generate_x()
+    elif mode == 'tsne':
+        tsne()
+    else:
+        raise ValueError('unknown mode: {}'.format(mode))
