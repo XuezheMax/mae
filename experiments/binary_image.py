@@ -95,9 +95,9 @@ print(args)
 
 lr = 1e-3
 optimizer = optim.Adam(mae.parameters(), lr=lr)
-step_decay = 0.999995
+step_decay = 0.999997
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
-decay_rate = 0.5
+decay_rate = 0.75
 schedule = args.schedule
 lr_min = 0.25e-4
 
