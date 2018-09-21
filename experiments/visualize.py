@@ -62,7 +62,7 @@ def reconstruct(random_sample):
     comparison = torch.cat([data, recon_img], dim=0).cpu()
     reorder_index = torch.from_numpy(np.array([[i + j * n for j in range(2)] for i in range(n)])).view(-1)
     comparison = comparison[reorder_index]
-    image_file = 'reconstruct.png'
+    image_file = 'reconstruct.random.png' if random_sample else 'reconstruct.fixed.png'
 
     if colorful:
         save_image(comparison, os.path.join(result_path, image_file), nrow=16, normalize=True, scale_each=True, range=(-1, 1))
@@ -100,6 +100,7 @@ def encode(visual_data, data_index):
 def generate_x():
     mae.eval()
     print("generating images:")
+    reconstruct(random_sample=False)
     reconstruct(random_sample=True)
     sample_z, _ = mae.sample_from_proir(256, device=device)
     sample_x, _ = mae.decode(sample_z, random_sample=True)
