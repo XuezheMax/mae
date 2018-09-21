@@ -23,7 +23,7 @@ parser.add_argument('--config', type=str, help='config file', required=True)
 parser.add_argument('--data', choices=['mnist', 'omniglot'], help='data set', required=True)
 parser.add_argument('--batch-size', type=int, default=100, metavar='N', help='input batch size for training (default: 128)')
 parser.add_argument('--epochs', type=int, default=1000, metavar='N', help='number of epochs to train (default: 10)')
-parser.add_argument('--seed', type=int, default=65537, metavar='S', help='random seed (default: 1)')
+parser.add_argument('--seed', type=int, default=524287, metavar='S', help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
 parser.add_argument('--eta', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--gamma', type=float, default=0.0, metavar='N', help='')
@@ -97,9 +97,9 @@ lr = 1e-3
 optimizer = optim.Adam(mae.parameters(), lr=lr)
 step_decay = 0.999998
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
-decay_rate = 0.75
+decay_rate = 0.5
 schedule = args.schedule
-lr_min = 0.5e-4
+lr_min = 0.25e-4
 
 patient = 0
 decay = 0
