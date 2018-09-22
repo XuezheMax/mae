@@ -21,7 +21,7 @@ from mae.modules import MAE
 parser = argparse.ArgumentParser(description='MAE Binary Image Example')
 parser.add_argument('--config', type=str, help='config file', required=True)
 parser.add_argument('--data', choices=['cifar10', 'lsun'], help='data set', required=True)
-parser.add_argument('--batch-size', type=int, default=100, metavar='N', help='input batch size for training (default: 128)')
+parser.add_argument('--batch-size', type=int, default=64, metavar='N', help='input batch size for training (default: 64)')
 parser.add_argument('--epochs', type=int, default=500, metavar='N', help='number of epochs to train (default: 10)')
 parser.add_argument('--seed', type=int, default=524287, metavar='S', help='random seed (default: 524287)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
