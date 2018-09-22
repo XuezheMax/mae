@@ -11,42 +11,51 @@ from mae.modules.networks.weight_norm import Conv2dWeightNorm, ConvTranspose2dWe
 
 def concat_elu(x, dim=1):
     """ like concatenated ReLU (http://arxiv.org/abs/1603.05201), but then with ELU """
-    return F.elu(torch.cat([x, -x], dim=dim))
+    return F.elu(torch.cat([x, -x], dim=dim), inplace=True)
 
 
 class GatedResnetBlock(nn.Module):
     def __init__(self, in_channels, h_channels=0, dropout=0.0):
         super(GatedResnetBlock, self).__init__()
         self.down_conv1 = DownShiftConv2d(2 * in_channels, in_channels, kernel_size=(2, 3), bias=True)
-        self.down_conv2 = DownShiftConv2d(2 * in_channels, 2 * in_channels, kernel_size=(2, 3), bias=True)
+        self.down_conv2 = DownShiftConv2d(2 * in_channels, in_channels, kernel_size=(2, 3), bias=True)
+        self.down_conv3 = DownShiftConv2d(2 * in_channels, 2 * in_channels, kernel_size=(2, 3), bias=True)
 
         self.down_right_conv1 = DownRightShiftConv2d(2 * in_channels, in_channels, kernel_size=(2, 2), bias=True)
+        self.down_right_conv2 = DownRightShiftConv2d(2 * in_channels, in_channels, kernel_size=(2, 2), bias=True)
         self.nin = Conv2dWeightNorm(2 * in_channels, in_channels, kernel_size=(1, 1))
-        self.down_right_conv2 = DownRightShiftConv2d(2 * in_channels, 2 * in_channels, kernel_size=(2, 2), bias=True)
+        self.down_right_conv3 = DownRightShiftConv2d(2 * in_channels, 2 * in_channels, kernel_size=(2, 2), bias=True)
 
         if h_channels:
-            self.h_conv = Conv2dWeightNorm(2 * h_channels, 2 * in_channels, kernel_size=(3, 3), padding=1)
+            self.h_conv1 = Conv2dWeightNorm(2 * h_channels, in_channels, kernel_size=(3, 3), padding=1)
+            self.h_conv2 = Conv2dWeightNorm(2 * in_channels, 2 * in_channels, kernel_size=(3, 3), padding=1)
         else:
-            self.h_conv = None
+            self.h_conv1 = None
+            self.h_conv2 = None
 
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x1, x2, h=None):
         if h is not None:
-            # h_channels -> 2 * h_channels -> 2 * in_channels
-            hc = self.h_conv(concat_elu(h))
+            # h_channels -> 2 * h_channels -> in_channels -> 2 * in_channels -> 2 * in_channels
+            hc = self.h_conv2(concat_elu(self.h_conv1(concat_elu(h))))
         else:
             hc = 0
 
         # [batch, 2 * in_channels, H, W]
-        c1 = self.dropout(concat_elu(self.down_conv1(concat_elu(x1))))
+        c1 = concat_elu(self.down_conv2(concat_elu(self.down_conv1(concat_elu(x1)))))
+        # dropout
+        c1 = self.dropout(c1)
         # [batch, in_channels, H, W]
-        a1, b1 = (self.down_conv2(c1) + hc).chunk(2, 1)
+        a1, b1 = (self.down_conv3(c1) + hc).chunk(2, 1)
         c1 = a1 * torch.sigmoid(b1) + x1
 
         # [batch, 2 * in_channels, H, W]
-        c2 = self.dropout(concat_elu(self.down_right_conv1(concat_elu(x2)) + self.nin(concat_elu(c1))))
-        a2, b2 = (self.down_right_conv2(c2) + hc).chunk(2, 1)
+        aux = self.nin(concat_elu(c1))
+        c2 = concat_elu(self.down_right_conv2(concat_elu(self.down_right_conv1(concat_elu(x2)))) + aux)
+        # dropout
+        c2 = self.dropout(c2)
+        a2, b2 = (self.down_right_conv3(c2) + hc).chunk(2, 1)
         c2 = a2 * torch.sigmoid(b2) + x2
 
         return c1, c2
