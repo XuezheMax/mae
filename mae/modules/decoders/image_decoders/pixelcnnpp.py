@@ -22,7 +22,6 @@ class _PixelCNNPPCore(nn.Module):
             nn.ELU(),
             # state [b, z_channels / 4, 32, 32]
             Conv2dWeightNorm(z_channels // 4, h_channels, 1),
-            nn.ELU(),
             # state [b, h_channels, 32, 32]
         )
 

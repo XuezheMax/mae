@@ -9,21 +9,26 @@ from mae.modules.networks.masked import DownShiftConvTranspose2d, DownRightShift
 from mae.modules.networks.weight_norm import Conv2dWeightNorm, ConvTranspose2dWeightNorm
 
 
+def concat_elu(x, dim=1):
+    """ like concatenated ReLU (http://arxiv.org/abs/1603.05201), but then with ELU """
+    return F.elu(torch.cat([x, -x], dim=dim))
+
+
 class GatedResnetBlock(nn.Module):
     def __init__(self, in_channels, h_channels=0, dropout=0.0):
         super(GatedResnetBlock, self).__init__()
-        self.down_conv1 = DownShiftConv2d(in_channels, in_channels, kernel_size=(2, 3), bias=True)
-        self.down_conv2 = DownShiftConv2d(in_channels, in_channels, kernel_size=(2, 3), bias=True)
-        self.down_conv3 = DownShiftConv2d(in_channels, 2 * in_channels, kernel_size=(2, 3), bias=True)
+        self.down_conv1 = DownShiftConv2d(2 * in_channels, in_channels, kernel_size=(2, 3), bias=True)
+        self.down_conv2 = DownShiftConv2d(2 * in_channels, in_channels, kernel_size=(2, 3), bias=True)
+        self.down_conv3 = DownShiftConv2d(2 * in_channels, 2 * in_channels, kernel_size=(2, 3), bias=True)
 
-        self.down_right_conv1 = DownRightShiftConv2d(in_channels, in_channels, kernel_size=(2, 2), bias=True)
-        self.down_right_conv2 = DownRightShiftConv2d(in_channels, in_channels, kernel_size=(2, 2), bias=True)
-        self.nin = Conv2dWeightNorm(in_channels, in_channels, kernel_size=(1, 1))
-        self.down_right_conv3 = DownRightShiftConv2d(in_channels, 2 * in_channels, kernel_size=(2, 2), bias=True)
+        self.down_right_conv1 = DownRightShiftConv2d(2 * in_channels, in_channels, kernel_size=(2, 2), bias=True)
+        self.down_right_conv2 = DownRightShiftConv2d(2 * in_channels, in_channels, kernel_size=(2, 2), bias=True)
+        self.nin = Conv2dWeightNorm(2 * in_channels, in_channels, kernel_size=(1, 1))
+        self.down_right_conv3 = DownRightShiftConv2d(2 * in_channels, 2 * in_channels, kernel_size=(2, 2), bias=True)
 
         if h_channels:
-            self.h_conv1 = Conv2dWeightNorm(h_channels, in_channels, kernel_size=(3, 3), padding=1)
-            self.h_conv2 = Conv2dWeightNorm(in_channels, 2 * in_channels, kernel_size=(3, 3), padding=1)
+            self.h_conv1 = Conv2dWeightNorm(2 * h_channels, in_channels, kernel_size=(3, 3), padding=1)
+            self.h_conv2 = Conv2dWeightNorm(2 * in_channels, 2 * in_channels, kernel_size=(3, 3), padding=1)
         else:
             self.h_conv1 = None
             self.h_conv2 = None
@@ -32,24 +37,32 @@ class GatedResnetBlock(nn.Module):
 
     def forward(self, x1, x2, h=None):
         if h is not None:
-            hc = self.h_conv2(F.elu(self.h_conv1(h)))
+            # h_channels -> 2 * h_channels -> in_channels
+            hc = self.h_conv1(concat_elu(h))
+            # in_channels -> 2 * in_channels -> 2 * in_channels
+            hc = self.h_conv2(concat_elu(hc))
         else:
             hc = 0
 
-        c1 = F.elu(self.down_conv1(x1))
-        c1 = F.elu(self.down_conv2(c1))
+        # [batch, 2 * in_channels, H, W]
+        c1 = concat_elu(x1)
+        c1 = concat_elu(self.down_conv1(c1))
+        c1 = concat_elu(self.down_conv2(c1))
         # dropout
         c1 = self.dropout(c1)
+        # [batch, in_channels, H, W]
         a1, b1 = (self.down_conv3(c1) + hc).chunk(2, 1)
-        c1 = F.elu(a1 * torch.sigmoid(b1) + x1)
+        c1 = a1 * torch.sigmoid(b1) + x1
 
-        c2 = F.elu(self.down_right_conv1(x2))
-        c2 = self.down_right_conv2(c2)
-        c2 = F.elu(c2 + self.nin(c1))
+        # [batch, 2 * in_channels, H, W]
+        aux = self.nin(concat_elu(c1))
+        c2 = concat_elu(x2)
+        c2 = concat_elu(self.down_right_conv1(c2))
+        c2 = concat_elu(self.down_right_conv2(c2) + aux)
         # dropout
         c2 = self.dropout(c2)
         a2, b2 = (self.down_right_conv3(c2) + hc).chunk(2, 1)
-        c2 = F.elu(a2 * torch.sigmoid(b2) + x2)
+        c2 = a2 * torch.sigmoid(b2) + x2
 
         return c1, c2
 
@@ -78,7 +91,7 @@ class TopShitBlock(nn.Module):
         x2 = TopShitBlock.down_shift(self.down_conv2(input))
         x2 = x2 + TopShitBlock.right_shift(self.down_right_conv(input))
 
-        return F.elu(x1), F.elu(x2)
+        return x1, x2
 
 
 class DownSamplingBlock(nn.Module):
@@ -90,7 +103,7 @@ class DownSamplingBlock(nn.Module):
     def forward(self, x1, x2, h=None):
         x1 = self.down_conv(x1)
         x2 = self.down_right_conv(x2)
-        return F.elu(x1), F.elu(x2)
+        return x1, x2
 
 
 class UpSamplingBlock(nn.Module):
@@ -102,17 +115,17 @@ class UpSamplingBlock(nn.Module):
     def forward(self, x1, x2, h=None):
         x1 = self.down_deconv(x1)
         x2 = self.down_right_deconv(x2)
-        return F.elu(x1), F.elu(x2)
+        return x1, x2
 
 
 class NINBlock(nn.Module):
     def __init__(self, num_filters):
         super(NINBlock, self).__init__()
-        self.nin = Conv2dWeightNorm(num_filters, num_filters, kernel_size=(1, 1))
+        self.nin = Conv2dWeightNorm(2 * num_filters, num_filters, kernel_size=(1, 1))
 
     def forward(self, x, residual):
-        residual = self.nin(residual)
-        return F.elu(x + residual)
+        residual = self.nin(concat_elu(residual))
+        return x + residual
 
 
 class Identity(nn.Module):
@@ -129,7 +142,7 @@ class DownSampling(nn.Module):
         self.conv = Conv2dWeightNorm(num_filters, num_filters * 2, kernel_size=(3, 3), stride=(2, 2), padding=1)
 
     def forward(self, x):
-        return F.elu(self.conv(x))
+        return self.conv(x)
 
 
 class UpSampling(nn.Module):
@@ -138,7 +151,7 @@ class UpSampling(nn.Module):
         self.deconv = ConvTranspose2dWeightNorm(num_filters, num_filters // 2, kernel_size=(3, 3), stride=(2, 2), padding=1, output_padding=1)
 
     def forward(self, x):
-        return F.elu(self.deconv(x))
+        return self.deconv(x)
 
 
 class PixelCNNPP(nn.Module):
