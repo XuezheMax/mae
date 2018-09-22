@@ -25,7 +25,7 @@ class GatedResnetBlock(nn.Module):
         self.down_right_conv2 = DownRightShiftConv2d(2 * in_channels, 2 * in_channels, kernel_size=(2, 2), bias=True)
 
         if h_channels:
-            self.h_conv = Conv2dWeightNorm(2 * in_channels, 2 * in_channels, kernel_size=(3, 3), padding=1)
+            self.h_conv = Conv2dWeightNorm(2 * h_channels, 2 * in_channels, kernel_size=(3, 3), padding=1)
         else:
             self.h_conv = None
 
