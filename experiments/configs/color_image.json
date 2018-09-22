@@ -12,9 +12,9 @@
       "width": 8,
       "num_blocks": 4,
       "kernel_size": 5,
-      "num_hiddens": 2,
+      "num_hiddens": 3,
       "hidden_channels": 128,
-      "hidden_kernels": [3, 3]
+      "hidden_kernels": [3, 3, 3]
     },
     "ngpu": 1
   },
