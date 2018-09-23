@@ -25,12 +25,11 @@ from mae.data import load_datasets, get_batch, iterate_minibatches
 from mae.modules import MAE
 
 parser = argparse.ArgumentParser(description='MAE Binary Image Example')
-parser.add_argument('--data', choices=['mnist', 'omniglot', 'cifar10', 'lsun'], help='data set', required=True)
-parser.add_argument('--mode', choices=['generate', 'tsne'], help='mode', required=True)
+parser.add_argument('--data', choices=['mnist', 'omniglot', 'cifar10', 'lsun'], help='data set', default="mnist", required=False)
 parser.add_argument('--seed', type=int, default=65537, metavar='S', help='random seed (default: 524287)')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 parser.add_argument('--n_labels', default=10, type=int)
-parser.add_argument("--method", choices=["kmeans", "knn", "svm", "linear"])
+parser.add_argument("--method", choices=["kmeans", "knn", "svm", "linear"], required=True)
 args = parser.parse_args()
 args.cuda = torch.cuda.is_available()
 random.seed(args.seed)
