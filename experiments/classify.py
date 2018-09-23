@@ -182,20 +182,21 @@ def linear_classifier(train_data, train_label, val_data, val_label, test_data, t
                         exit(0)
 
 
-def classify():
+if __name__ == "__main__":
     time_start = time.time()
 
     method = args.method
     print('encoding:')
-    if method == "linear":
-        latent_codes_train, labels_train = encode(train_data, train_index)
-        latent_codes_val, labels_val = encode(train_data, val_index)
-        latent_codes_test, labels_test = encode(test_data, test_index)
-    else:
-        latent_codes_train, labels_train = encode(train_data, train_index_full)
-        latent_codes_test, labels_test = encode(test_data, test_index)
-        latent_codes_train, latent_codes_test = latent_codes_train.cpu().numpy(), latent_codes_test.cpu().numpy()
-        labels_train, labels_test = labels_train.cpu().numpy(), labels_test.cpu().numpy()
+    with torch.no_grad():
+        if method == "linear":
+            latent_codes_train, labels_train = encode(train_data, train_index)
+            latent_codes_val, labels_val = encode(train_data, val_index)
+            latent_codes_test, labels_test = encode(test_data, test_index)
+        else:
+            latent_codes_train, labels_train = encode(train_data, train_index_full)
+            latent_codes_test, labels_test = encode(test_data, test_index)
+            latent_codes_train, latent_codes_test = latent_codes_train.cpu().numpy(), latent_codes_test.cpu().numpy()
+            labels_train, labels_test = labels_train.cpu().numpy(), labels_test.cpu().numpy()
 
     print('time: {:.1f}s'.format(time.time() - time_start))
 
