@@ -29,6 +29,8 @@ parser.add_argument('--seed', type=int, default=65537, metavar='S', help='random
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 parser.add_argument('--n_labels', default=10, type=int)
 parser.add_argument("--method", choices=["kmeans", "knn", "svm", "linear"], required=True)
+
+parser.add_argument("--knn_N", help="training data size", type=int, default=-1)
 args = parser.parse_args()
 args.cuda = torch.cuda.is_available()
 random.seed(args.seed)
@@ -45,12 +47,14 @@ colorful = dataset in ['cifar10', 'lsun']
 train_data, test_data, n_val = load_datasets(dataset)
 
 train_index = np.arange(len(train_data))
-
 train_index_full = train_index
 
 np.random.shuffle(train_index)
 val_index = train_index[-n_val:]
 train_index = train_index[:-n_val]
+
+if args.method == "knn" and args.knn_N != -1:
+    train_index_full = train_index[:args.knn_N]
 
 test_index = np.arange(len(test_data))
 np.random.shuffle(test_index)
@@ -85,14 +89,20 @@ def encode(visual_data, data_index):
     return torch.cat(latent_codes, dim=0), torch.cat(labels, dim=0)
 
 
-def kmeans(train_data, test_data, test_label, n_labels):
+def kmeans(train_data, train_label, test_data, test_label, n_labels):
     # train_data / test_data: n_samples, dim
     alg = KMeans(n_clusters=n_labels, init='k-means++', random_state = 1,
                  n_init = 10, max_iter = 300, tol = 0.0001,
                  precompute_distances = 'auto', verbose = 0, copy_x = True, n_jobs = 10, algorithm ='auto')
     model = alg.fit(train_data)
+    labels = model.labels_
+    count_labels = np.ones((n_labels, n_labels))
+    for idx, i in enumerate(labels):
+        count_labels[i][train_label[idx]] += 1
+    assignments = np.argmax(labels, axis=1)
     prediction = model.predict(test_data)
-    acc = np.equal(prediction, test_label).sum() * 1.0 / len(prediction)
+    origin_label = np.array([assignments[i] for i in prediction])
+    acc = np.equal(origin_label, test_label).sum() * 1.0 / len(prediction)
     print(f"Accuracy on test data is {acc}")
 
 
@@ -193,7 +203,7 @@ def classify():
     n_neighbors =10
 
     if method == "kmeans":
-        kmeans(latent_codes_train, latent_codes_test, labels_test, n_labels)
+        kmeans(latent_codes_train, labels_train, latent_codes_test, labels_test, n_labels)
     elif method == "knn":
         knn(latent_codes_train, labels_train, latent_codes_test, labels_test, n_neighbors)
     elif method == "svm":
