@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(description='MAE Binary Image Example')
 parser.add_argument('--data', choices=['mnist', 'omniglot', 'cifar10', 'lsun'], help='data set', default="mnist", required=False)
 parser.add_argument('--seed', type=int, default=65537, metavar='S', help='random seed (default: 524287)')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
-parser.add_argument('--n_labels', default=10, type=int)
+parser.add_argument('--n_clusters', default=10, type=int)
 parser.add_argument("--method", choices=["kmeans", "knn", "svm", "linear"], required=True)
 
 parser.add_argument("--knn_N", help="training data size", type=int, default=-1)
@@ -44,6 +44,12 @@ model_path = args.model_path
 
 dataset = args.data
 colorful = dataset in ['cifar10', 'lsun']
+
+if dataset in ["mnist", "cifar10"]:
+    n_labels = 10
+else:
+    raise NotImplementedError
+
 train_data, test_data, n_val = load_datasets(dataset)
 
 train_index = np.arange(len(train_data))
@@ -89,17 +95,17 @@ def encode(visual_data, data_index):
     return torch.cat(latent_codes, dim=0), torch.cat(labels, dim=0)
 
 
-def kmeans(train_data, train_label, test_data, test_label, n_labels):
+def kmeans(train_data, train_label, test_data, test_label, n_clusters):
     # train_data / test_data: n_samples, dim
-    alg = KMeans(n_clusters=n_labels, init='k-means++', random_state = 1,
+    alg = KMeans(n_clusters=n_clusters, init='k-means++', random_state = 1,
                  n_init = 10, max_iter = 300, tol = 0.0001,
                  precompute_distances = 'auto', verbose = 0, copy_x = True, n_jobs = 10, algorithm ='auto')
     model = alg.fit(train_data)
     labels = model.labels_
-    count_labels = np.ones((n_labels, n_labels))
+    count_labels = np.ones((n_clusters, n_labels))
     for idx, i in enumerate(labels):
         count_labels[i][train_label[idx]] += 1
-    assignments = np.argmax(labels, axis=1)
+    assignments = np.argmax(count_labels, axis=1)
     prediction = model.predict(test_data)
     origin_label = np.array([assignments[i] for i in prediction])
     acc = np.equal(origin_label, test_label).sum() * 1.0 / len(prediction)
@@ -135,7 +141,7 @@ def data_iterator(data, label, batch_size):
         yield batch
 
 
-def linear_classifier(train_data, train_label, val_data, val_label, test_data, test_label, n_labels, bs):
+def linear_classifier(train_data, train_label, val_data, val_label, test_data, test_label, bs):
     n_sample, n_in = train_data.size(0), train_data.size(1)
     model = nn.Linear(n_in, n_labels)
     lr = 0.01
@@ -200,14 +206,14 @@ if __name__ == "__main__":
 
     print('time: {:.1f}s'.format(time.time() - time_start))
 
-    n_labels = args.n_labels
+    n_clusters = args.n_clusters
     n_neighbors =10
 
     if method == "kmeans":
-        kmeans(latent_codes_train, labels_train, latent_codes_test, labels_test, n_labels)
+        kmeans(latent_codes_train, labels_train, latent_codes_test, labels_test, n_clusters)
     elif method == "knn":
         knn(latent_codes_train, labels_train, latent_codes_test, labels_test, n_neighbors)
     elif method == "svm":
         svm(latent_codes_train, labels_train, latent_codes_test, labels_test)
     elif method == "linear":
-        linear_classifier(latent_codes_train, labels_train, latent_codes_val, labels_val, latent_codes_test, labels_test, n_labels, 128)
+        linear_classifier(latent_codes_train, labels_train, latent_codes_val, labels_val, latent_codes_test, labels_test, 128)
