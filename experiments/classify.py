@@ -19,7 +19,6 @@ import torch.nn as nn
 import torch.nn.utils
 from torch import optim
 import torch.nn.functional as F
-from torchvision.utils import save_image
 
 from mae.data import load_datasets, get_batch, iterate_minibatches
 from mae.modules import MAE
@@ -40,9 +39,6 @@ if args.cuda:
 device = torch.device('cuda') if args.cuda else torch.device('cpu')
 
 model_path = args.model_path
-result_path = os.path.join(model_path, 'visualize')
-if not os.path.exists(result_path):
-    os.makedirs(result_path)
 
 dataset = args.data
 colorful = dataset in ['cifar10', 'lsun']
@@ -60,8 +56,6 @@ test_index = np.arange(len(test_data))
 np.random.shuffle(test_index)
 
 mae = MAE.load(model_path, device)
-
-mode = args.mode
 
 
 def encode(visual_data, data_index):
