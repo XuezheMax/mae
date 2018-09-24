@@ -218,7 +218,7 @@ if __name__ == "__main__":
             for i in [100, 1000, 10000, len(latent_codes_train)]:
                 for j in range(5):
                     inds = np.random.permutation(range(len(latent_codes_train)))
-                    train_codes, train_labels = latent_codes_train[inds[:i], :], labels_train[inds[:i], :],
+                    train_codes, train_labels = latent_codes_train[inds[:i], :], labels_train[inds[:i]],
                     if method == "knn":
                         acc = knn(train_codes, train_labels, latent_codes_test, labels_test, n_neighbors)
                     elif method == "svm":
