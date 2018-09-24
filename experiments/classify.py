@@ -194,24 +194,25 @@ if __name__ == "__main__":
     n_neighbors = 10
 
     print('encoding:')
-    with torch.no_grad():
-        if method == "linear":
+
+    if method == "linear":
+        with torch.no_grad():
             latent_codes_train, labels_train = encode(train_data, train_index)
             latent_codes_val, labels_val = encode(train_data, val_index)
             latent_codes_test, labels_test = encode(test_data, test_index)
             print('time: {:.1f}s'.format(time.time() - time_start))
-
-            for i in [100, 1000, 10000, len(latent_codes_train)]:
-                accs = []
-                for j in range(5):
-                    inds = np.random.permutation(range(len(latent_codes_train)))
-                    train_codes, train_labels = latent_codes_train[inds[:i], :], labels_train[inds[:i]],
-                    acc = linear_classifier(train_codes, train_labels, latent_codes_val, labels_val, latent_codes_test,
-                              labels_test, 128)
-                    accs.append(acc)
-                acc = sum(accs) * 1.0 / len(accs)
-                print(f'Training data size={i}, Avg acc over 5 times = {acc}')
-        else:
+        for i in [100, 1000, 10000, len(latent_codes_train)]:
+            accs = []
+            for j in range(5):
+                inds = np.random.permutation(range(len(latent_codes_train)))
+                train_codes, train_labels = latent_codes_train[inds[:i], :], labels_train[inds[:i]],
+                acc = linear_classifier(train_codes, train_labels, latent_codes_val, labels_val, latent_codes_test,
+                          labels_test, 128)
+                accs.append(acc)
+            acc = sum(accs) * 1.0 / len(accs)
+            print(f'Training data size={i}, Avg acc over 5 times = {acc}')
+    else:
+        with torch.no_grad():
             latent_codes_train, labels_train = encode(train_data, train_index_full)
             latent_codes_test, labels_test = encode(test_data, test_index)
             latent_codes_train, latent_codes_test = latent_codes_train.cpu().numpy(), latent_codes_test.cpu().numpy()
