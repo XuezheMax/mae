@@ -71,6 +71,7 @@ def encode(visual_data, data_index):
     num_back = 0
     for i, (data, label) in enumerate(iterate_minibatches(visual_data, data_index, 200, False)):
         data = data.to(device)
+        label = label.to(device)
         if not colorful:
             data = torch.ge(data, 0.5).float()
         batch_size = len(data)
@@ -142,7 +143,7 @@ def data_iterator(data, label, batch_size):
 
 def linear_classifier(train_data, train_label, val_data, val_label, test_data, test_label, bs):
     n_sample, n_in = train_data.size(0), train_data.size(1)
-    model = nn.Linear(n_in, n_labels)
+    model = nn.Linear(n_in, n_labels).to(device)
     lr = 0.01
     optimizer = optim.SGD(model.parameters(), lr=lr)
     cross_entropy_loss = nn.CrossEntropyLoss(size_average=False, reduce=True)
@@ -152,9 +153,8 @@ def linear_classifier(train_data, train_label, val_data, val_label, test_data, t
     best_params = None
     while True:
         for batch_idx, (data, labels) in enumerate(data_iterator(train_data, train_label, bs)):
-            data = data.to(device)
+            # data = data.to(device)
             batch_size = len(data)
-
             logits = model(data)
             loss = cross_entropy_loss(logits, labels)
             optimizer.zero_grad()
