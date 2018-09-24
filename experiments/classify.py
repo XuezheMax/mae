@@ -29,7 +29,6 @@ parser.add_argument('--seed', type=int, default=65537, metavar='S', help='random
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 parser.add_argument("--method", choices=["kmeans", "knn", "svm", "linear"], required=True)
 
-parser.add_argument("--knn_N", help="training data size", type=int, default=-1)
 args = parser.parse_args()
 args.cuda = torch.cuda.is_available()
 random.seed(args.seed)
@@ -55,11 +54,9 @@ train_index = np.arange(len(train_data))
 train_index_full = train_index
 
 np.random.shuffle(train_index)
+
 val_index = train_index[-n_val:]
 train_index = train_index[:-n_val]
-
-if args.method == "knn" and args.knn_N != -1:
-    train_index_full = train_index[:args.knn_N]
 
 test_index = np.arange(len(test_data))
 np.random.shuffle(test_index)
@@ -118,6 +115,7 @@ def knn(train_data, train_label, test_data, test_label, n_neighbors=10):
     model = alg.fit(train_data, train_label)
     acc = model.score(test_data, test_label)
     print(f"Accuracy on test data is {acc}")
+    return acc
 
 
 def svm(train_data, train_label, test_data, test_label):
@@ -125,6 +123,7 @@ def svm(train_data, train_label, test_data, test_label):
     clf.fit(train_data, train_label)
     acc = clf.score(test_data, test_label)
     print(f"Accuracy on test data is {acc}")
+    return acc
 
 
 def data_iterator(data, label, batch_size):
@@ -192,27 +191,38 @@ if __name__ == "__main__":
     time_start = time.time()
 
     method = args.method
+    n_neighbors = 10
+
     print('encoding:')
     with torch.no_grad():
         if method == "linear":
             latent_codes_train, labels_train = encode(train_data, train_index)
             latent_codes_val, labels_val = encode(train_data, val_index)
             latent_codes_test, labels_test = encode(test_data, test_index)
+            print('time: {:.1f}s'.format(time.time() - time_start))
+
+            linear_classifier(latent_codes_train, labels_train, latent_codes_val, labels_val, latent_codes_test,
+                              labels_test, 128)
         else:
             latent_codes_train, labels_train = encode(train_data, train_index_full)
             latent_codes_test, labels_test = encode(test_data, test_index)
             latent_codes_train, latent_codes_test = latent_codes_train.cpu().numpy(), latent_codes_test.cpu().numpy()
             labels_train, labels_test = labels_train.cpu().numpy(), labels_test.cpu().numpy()
 
-    print('time: {:.1f}s'.format(time.time() - time_start))
+            print('time: {:.1f}s'.format(time.time() - time_start))
+            if method == "kmeans":
+                kmeans(latent_codes_train, labels_train, latent_codes_test, labels_test)
+                exit(0)
 
-    n_neighbors =10
-
-    if method == "kmeans":
-        kmeans(latent_codes_train, labels_train, latent_codes_test, labels_test)
-    elif method == "knn":
-        knn(latent_codes_train, labels_train, latent_codes_test, labels_test, n_neighbors)
-    elif method == "svm":
-        svm(latent_codes_train, labels_train, latent_codes_test, labels_test)
-    elif method == "linear":
-        linear_classifier(latent_codes_train, labels_train, latent_codes_val, labels_val, latent_codes_test, labels_test, 128)
+            accs = []
+            for i in [100, 1000, 10000, len(latent_codes_train)]:
+                for j in range(5):
+                    inds = np.random.permutation(range(len(latent_codes_train)))
+                    train_codes, train_labels = latent_codes_train[inds[:i], :], labels_train[inds[:i], :],
+                    if method == "knn":
+                        acc = knn(train_codes, train_labels, latent_codes_test, labels_test, n_neighbors)
+                    elif method == "svm":
+                        acc = svm(train_codes, train_labels, latent_codes_test, labels_test)
+                    accs.append(acc)
+                acc = sum(accs) * 1.0 / len(accs)
+                print(f'Training data size={i}, Avg acc over 5 times = {acc}')
