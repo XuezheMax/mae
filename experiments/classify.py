@@ -167,7 +167,7 @@ def linear_classifier(train_data, train_label, val_data, val_label, test_data, t
                 model.eval()
                 with torch.no_grad():
                     predictions = torch.argmax(F.softmax(model(val_data), dim=1), dim=1)
-                    acc = torch.mean(torch.equal(predictions, val_label)).item()
+                    acc = torch.mean(1 - torch.ne(predictions, val_label)).item()
                     print(f"Evaluation acc on dev set = {acc}")
                     if acc > best_acc:
                         best_acc = acc
@@ -182,7 +182,7 @@ def linear_classifier(train_data, train_label, val_data, val_label, test_data, t
                     if decay_num > patience:
                         model.load_state_dict(best_params)
                         test_pred = torch.argmax(F.softmax(model(test_data), dim=1), dim=1)
-                        acc = torch.mean(torch.equal(test_pred, test_label)).item()
+                        acc = torch.mean(1- torch.ne(test_pred, test_label)).item()
                         print(f"Evaluation acc on test set = {acc}")
                         return acc
 
