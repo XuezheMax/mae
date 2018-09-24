@@ -214,8 +214,8 @@ if __name__ == "__main__":
                 kmeans(latent_codes_train, labels_train, latent_codes_test, labels_test)
                 exit(0)
 
-            accs = []
             for i in [100, 1000, 10000, len(latent_codes_train)]:
+                accs = []
                 for j in range(5):
                     inds = np.random.permutation(range(len(latent_codes_train)))
                     train_codes, train_labels = latent_codes_train[inds[:i], :], labels_train[inds[:i]],
