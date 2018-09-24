@@ -184,7 +184,7 @@ def linear_classifier(train_data, train_label, val_data, val_label, test_data, t
                         test_pred = torch.argmax(F.softmax(model(test_data), dim=1), dim=1)
                         acc = torch.mean(torch.equal(test_pred, test_label)).item()
                         print(f"Evaluation acc on test set = {acc}")
-                        exit(0)
+                        return acc
 
 
 if __name__ == "__main__":
@@ -201,8 +201,16 @@ if __name__ == "__main__":
             latent_codes_test, labels_test = encode(test_data, test_index)
             print('time: {:.1f}s'.format(time.time() - time_start))
 
-            linear_classifier(latent_codes_train, labels_train, latent_codes_val, labels_val, latent_codes_test,
+            for i in [100, 1000, 10000, len(latent_codes_train)]:
+                accs = []
+                for j in range(5):
+                    inds = np.random.permutation(range(len(latent_codes_train)))
+                    train_codes, train_labels = latent_codes_train[inds[:i], :], labels_train[inds[:i]],
+                    acc = linear_classifier(train_codes, train_labels, latent_codes_val, labels_val, latent_codes_test,
                               labels_test, 128)
+                    accs.append(acc)
+                acc = sum(accs) * 1.0 / len(accs)
+                print(f'Training data size={i}, Avg acc over 5 times = {acc}')
         else:
             latent_codes_train, labels_train = encode(train_data, train_index_full)
             latent_codes_test, labels_test = encode(test_data, test_index)
