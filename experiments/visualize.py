@@ -9,6 +9,9 @@ import argparse
 import random
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib import colors as mcolors
+
+colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
 from sklearn.manifold import TSNE
 
 import torch
@@ -122,20 +125,25 @@ def tsne():
     print('time: {:.1f}s'.format(time.time() - time_start))
 
     print('tSNE visualizing:')
-    # colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k', 'w', 'orange', 'purple']
+    color_names = ['orangered', 'goldenrod', 'olivedrab', 'mediumseagreen', 'forestgreen', 'dodgerblue', 'steelblue', 'mediumslateblue', 'orchid', 'hotpink']
 
     tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=1000)
     tsne_results = tsne.fit_transform(latent_codes)
 
-    plt.style.use('classic')
-    plt.figure(figsize=(10, 10))
+    opacity = 1.0
+    fig, ax = plt.subplots(figsize=(10, 10))
     for i in range(10):
-        plt.scatter(tsne_results[labels == i, 0], tsne_results[labels == i, 1], label=str(i))
-    plt.tick_params(axis='both',which='both',
-                    bottom=False, top=False, left=False, right=False,
-                    labelbottom=False, labeltop=False, labelleft=False, labelright=False)
-    plt.grid(False)
-    plt.savefig(os.path.join(result_path, 'tSNE.png'), bbox_inches='tight')
+        color = colors[color_names[i]]
+        ax.scatter(tsne_results[labels == i, 0], tsne_results[labels == i, 1], s=40, label=str(i), c=color, alpha=opacity, linewidths=0)
+    ax.tick_params(axis='both', which='both',
+                   bottom=False, top=False, left=False, right=False,
+                   labelbottom=False, labeltop=False, labelleft=False, labelright=False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.grid(False)
+    fig.savefig(os.path.join(result_path, 'tSNE.png'), bbox_inches='tight')
 
 
 with torch.no_grad():
