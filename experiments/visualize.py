@@ -8,8 +8,7 @@ import time
 import argparse
 import random
 import numpy as np
-import pandas as pd
-from ggplot import *
+from matplotlib import pyplot as plt
 from sklearn.manifold import TSNE
 
 import torch
@@ -112,6 +111,7 @@ def generate_x():
 
 
 def tsne():
+    assert dataset in ['mnist', 'cifar10']
     time_start = time.time()
     print('encoding:')
     latent_codes_train, labels_train = encode(train_data, train_index)
@@ -122,21 +122,20 @@ def tsne():
     print('time: {:.1f}s'.format(time.time() - time_start))
 
     print('tSNE visualizing:')
-    feat_cols = ['z' + str(i) for i in range(latent_codes.shape[1])]
-    df = pd.DataFrame(latent_codes, columns=feat_cols)
-    df['label'] = labels
-    df['label'] = df['label'].apply(lambda i: str(i))
+    # colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k', 'w', 'orange', 'purple']
 
-    visual_index = np.arange(len(labels))
     tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=1000)
-    tsne_results = tsne.fit_transform(df.loc[visual_index, feat_cols].values)
+    tsne_results = tsne.fit_transform(latent_codes)
 
-    df_tsne = df.loc[visual_index, :].copy()
-    df_tsne['x-tsne'] = tsne_results[:, 0]
-    df_tsne['y-tsne'] = tsne_results[:, 1]
-
-    chart = ggplot(df_tsne, aes(x='x-tsne', y='y-tsne', color='label')) + geom_point(size=70, alpha=0.1) + ggtitle("tSNE dimensions colored by digit")
-    chart.save(os.path.join(result_path, 'tSNE.png'))
+    plt.style.use('classic')
+    plt.figure(figsize=(10, 10))
+    for i in range(10):
+        plt.scatter(tsne_results[labels == i, 0], tsne_results[labels == i, 1], label=str(i))
+    plt.tick_params(axis='both',which='both',
+                    bottom=False, top=False, left=False, right=False,
+                    labelbottom=False, labeltop=False, labelleft=False, labelright=False)
+    plt.grid(False)
+    plt.savefig(os.path.join(result_path, 'tSNE.png'), bbox_inches='tight')
 
 
 with torch.no_grad():
