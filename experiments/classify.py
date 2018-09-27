@@ -97,7 +97,7 @@ def kmeans(train_data, train_label, test_data, test_label):
         accs = []
         for i in range(5):
             # train_data / test_data: n_samples, dim
-            alg = KMeans(n_clusters=n_clusters, init='k-means++', random_state = 1,
+            alg = KMeans(n_clusters=n_clusters, init='k-means++', random_state = i,
                          n_init = 10, max_iter = 300, tol = 0.0001,
                          precompute_distances = 'auto', verbose = 0, copy_x = True, n_jobs = 10, algorithm ='auto')
             model = alg.fit(train_data)
