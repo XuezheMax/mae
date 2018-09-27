@@ -94,20 +94,26 @@ def encode(visual_data, data_index):
 
 def kmeans(train_data, train_label, test_data, test_label):
     for n_clusters in [10, 20, 30]:
-        # train_data / test_data: n_samples, dim
-        alg = KMeans(n_clusters=n_clusters, init='k-means++', random_state = 1,
-                     n_init = 10, max_iter = 300, tol = 0.0001,
-                     precompute_distances = 'auto', verbose = 0, copy_x = True, n_jobs = 10, algorithm ='auto')
-        model = alg.fit(train_data)
-        labels = model.labels_
-        count_labels = np.ones((n_clusters, n_labels))
-        for idx, i in enumerate(labels):
-            count_labels[i][train_label[idx]] += 1
-        assignments = np.argmax(count_labels, axis=1)
-        prediction = model.predict(test_data)
-        origin_label = np.array([assignments[i] for i in prediction])
-        acc = np.equal(origin_label, test_label).sum() * 1.0 / len(prediction)
-        print(f"K={n_clusters}, Accuracy on test data is {acc}")
+        accs = []
+        for i in range(5):
+            # train_data / test_data: n_samples, dim
+            alg = KMeans(n_clusters=n_clusters, init='k-means++', random_state = 1,
+                         n_init = 10, max_iter = 300, tol = 0.0001,
+                         precompute_distances = 'auto', verbose = 0, copy_x = True, n_jobs = 10, algorithm ='auto')
+            model = alg.fit(train_data)
+            labels = model.labels_
+            count_labels = np.ones((n_clusters, n_labels))
+            for idx, i in enumerate(labels):
+                count_labels[i][train_label[idx]] += 1
+            assignments = np.argmax(count_labels, axis=1)
+            prediction = model.predict(test_data)
+            origin_label = np.array([assignments[i] for i in prediction])
+            acc = np.equal(origin_label, test_label).sum() * 1.0 / len(prediction)
+            accs.append(acc)
+        accs = np.array(accs)
+        avg_acc = np.mean(accs)
+        std = np.std(accs)
+        print(f'K={n_clusters}, Avg acc over 5 times = {avg_acc}, Std = {std}')
 
 
 def knn(train_data, train_label, test_data, test_label, n_neighbors=10):
@@ -209,8 +215,10 @@ if __name__ == "__main__":
                 acc = linear_classifier(train_codes, train_labels, latent_codes_val, labels_val, latent_codes_test,
                           labels_test, 128)
                 accs.append(acc)
-            acc = sum(accs) * 1.0 / len(accs)
-            print(f'Training data size={i}, Avg acc over 5 times = {acc}')
+            accs = np.array(accs)
+            avg_acc = np.mean(accs)
+            std = np.std(accs)
+            print(f'Training data size={i}, Avg acc over 5 times = {avg_acc}, Std = {std}')
     else:
         with torch.no_grad():
             latent_codes_train, labels_train = encode(train_data, train_index_full)
@@ -233,5 +241,7 @@ if __name__ == "__main__":
                     elif method == "svm":
                         acc = svm(train_codes, train_labels, latent_codes_test, labels_test)
                     accs.append(acc)
-                acc = sum(accs) * 1.0 / len(accs)
-                print(f'Training data size={i}, Avg acc over 5 times = {acc}')
+                accs = np.array(accs)
+                avg_acc = np.mean(accs)
+                std = np.std(accs)
+                print(f'Training data size={i}, Avg acc over 5 times = {avg_acc}, Std = {std}')
