@@ -130,7 +130,7 @@ def tsne():
     tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=1000)
     tsne_results = tsne.fit_transform(latent_codes)
 
-    opacity = 1.0
+    opacity = 0.1
     fig, ax = plt.subplots(figsize=(10, 10))
     for i in range(10):
         color = colors[color_names[i]]
