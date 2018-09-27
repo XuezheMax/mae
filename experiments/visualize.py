@@ -130,11 +130,11 @@ def tsne():
     tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=1000)
     tsne_results = tsne.fit_transform(latent_codes)
 
-    opacity = 0.1
+    opacity = 0.2
     fig, ax = plt.subplots(figsize=(10, 10))
     for i in range(10):
         color = colors[color_names[i]]
-        ax.scatter(tsne_results[labels == i, 0], tsne_results[labels == i, 1], s=40, label=str(i), c=color, alpha=opacity, linewidths=0)
+        ax.scatter(tsne_results[labels == i, 0], tsne_results[labels == i, 1], s=70, label=str(i), c=color, alpha=opacity, linewidths=0)
     ax.tick_params(axis='both', which='both',
                    bottom=False, top=False, left=False, right=False,
                    labelbottom=False, labeltop=False, labelleft=False, labelright=False)
