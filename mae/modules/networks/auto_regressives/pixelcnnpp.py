@@ -38,7 +38,9 @@ class GatedResnetBlock(nn.Module):
     def forward(self, x1, x2, h=None):
         if h is not None:
             # h_channels -> 2 * h_channels -> in_channels -> 2 * in_channels -> 2 * in_channels
-            hc = self.h_conv2(concat_elu(self.h_conv1(concat_elu(h))))
+            hc = concat_elu(self.h_conv1(concat_elu(h)))
+            hc = self.dropout(hc)
+            hc = self.h_conv2(hc)
         else:
             hc = 0
 

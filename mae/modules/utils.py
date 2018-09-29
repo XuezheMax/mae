@@ -157,3 +157,15 @@ def sample_from_discretized_mix_logistic(means, logscales, coeffs, logit_probs, 
     x2 = (x[:, 2] + coeffs[:, 1] * x0 + coeffs[:, 2] * x1).clamp(min=-1., max=1.)
     x = torch.stack([x0, x1, x2], dim=1)
     return x
+
+
+def exponentialMovingAverage(original, shadow, decay_rate, init=False):
+    params = dict()
+    for name, param in shadow.named_parameters():
+        params[name] = param
+    for name, param in original.named_parameters():
+        shadow_param = params[name]
+        if init:
+            shadow_param.data.copy_(param.data)
+        else:
+            shadow_param.data.add_((1 - decay_rate) * (param.data - shadow_param.data))
