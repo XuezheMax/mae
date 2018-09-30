@@ -39,7 +39,6 @@ class GatedResnetBlock(nn.Module):
         if h is not None:
             # h_channels -> 2 * h_channels -> in_channels -> 2 * in_channels -> 2 * in_channels
             hc = concat_elu(self.h_conv1(concat_elu(h)))
-            hc = self.dropout(hc)
             hc = self.h_conv2(hc)
         else:
             hc = 0
