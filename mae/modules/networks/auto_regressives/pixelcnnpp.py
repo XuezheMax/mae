@@ -11,7 +11,7 @@ from mae.modules.networks.weight_norm import Conv2dWeightNorm, ConvTranspose2dWe
 
 def concat_elu(x, dim=1):
     """ like concatenated ReLU (http://arxiv.org/abs/1603.05201), but then with ELU """
-    return F.elu(torch.cat([x, -x], dim=dim), inplace=True)
+    return F.elu(torch.cat([x, -x], dim=dim))
 
 
 def elu(x):
