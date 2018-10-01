@@ -23,6 +23,7 @@
     "z_channels": 16,
     "h_channels": 16,
     "dropout": 0.5,
+    "activation": "concat_elu",
     "nmix": 5,
     "ngpu": 1
   }

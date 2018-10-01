@@ -14,21 +14,28 @@ def concat_elu(x, dim=1):
     return F.elu(torch.cat([x, -x], dim=dim), inplace=True)
 
 
-class GatedResnetBlock(nn.Module):
-    def __init__(self, in_channels, h_channels=0, dropout=0.0):
-        super(GatedResnetBlock, self).__init__()
-        self.down_conv1 = DownShiftConv2d(2 * in_channels, in_channels, kernel_size=(2, 3), bias=True)
-        self.down_conv2 = DownShiftConv2d(2 * in_channels, in_channels, kernel_size=(2, 3), bias=True)
-        self.down_conv3 = DownShiftConv2d(2 * in_channels, 2 * in_channels, kernel_size=(2, 3), bias=True)
+def elu(x):
+    return F.elu(x, inplace=True)
 
-        self.down_right_conv1 = DownRightShiftConv2d(2 * in_channels, in_channels, kernel_size=(2, 2), bias=True)
-        self.down_right_conv2 = DownRightShiftConv2d(2 * in_channels, in_channels, kernel_size=(2, 2), bias=True)
-        self.nin = Conv2dWeightNorm(2 * in_channels, in_channels, kernel_size=(1, 1))
-        self.down_right_conv3 = DownRightShiftConv2d(2 * in_channels, 2 * in_channels, kernel_size=(2, 2), bias=True)
+
+class GatedResnetBlock(nn.Module):
+    def __init__(self, in_channels, h_channels=0, dropout=0.0, activation=concat_elu):
+        super(GatedResnetBlock, self).__init__()
+        assert activation in [elu, concat_elu]
+        gain = 1 if activation == elu else 2
+        self.activation = activation
+        self.down_conv1 = DownShiftConv2d(gain * in_channels, in_channels, kernel_size=(2, 3), bias=True)
+        self.down_conv2 = DownShiftConv2d(gain * in_channels, in_channels, kernel_size=(2, 3), bias=True)
+        self.down_conv3 = DownShiftConv2d(gain * in_channels, 2 * in_channels, kernel_size=(2, 3), bias=True)
+
+        self.down_right_conv1 = DownRightShiftConv2d(gain * in_channels, in_channels, kernel_size=(2, 2), bias=True)
+        self.down_right_conv2 = DownRightShiftConv2d(gain * in_channels, in_channels, kernel_size=(2, 2), bias=True)
+        self.nin = Conv2dWeightNorm(gain * in_channels, in_channels, kernel_size=(1, 1))
+        self.down_right_conv3 = DownRightShiftConv2d(gain * in_channels, 2 * in_channels, kernel_size=(2, 2), bias=True)
 
         if h_channels:
-            self.h_conv1 = Conv2dWeightNorm(2 * h_channels, in_channels, kernel_size=(3, 3), padding=1)
-            self.h_conv2 = Conv2dWeightNorm(2 * in_channels, 2 * in_channels, kernel_size=(3, 3), padding=1)
+            self.h_conv1 = Conv2dWeightNorm(gain * h_channels, in_channels, kernel_size=(3, 3), padding=1)
+            self.h_conv2 = Conv2dWeightNorm(gain * in_channels, 2 * in_channels, kernel_size=(3, 3), padding=1)
         else:
             self.h_conv1 = None
             self.h_conv2 = None
@@ -38,13 +45,13 @@ class GatedResnetBlock(nn.Module):
     def forward(self, x1, x2, h=None):
         if h is not None:
             # h_channels -> 2 * h_channels -> in_channels -> 2 * in_channels -> 2 * in_channels
-            hc = concat_elu(self.h_conv1(concat_elu(h)))
+            hc = self.activation(self.h_conv1(self.activation(h)))
             hc = self.h_conv2(hc)
         else:
             hc = 0
 
         # [batch, 2 * in_channels, H, W]
-        c1 = concat_elu(self.down_conv2(concat_elu(self.down_conv1(concat_elu(x1)))))
+        c1 = self.activation(self.down_conv2(self.activation(self.down_conv1(self.activation(x1)))))
         # dropout
         c1 = self.dropout(c1)
         # [batch, in_channels, H, W]
@@ -52,8 +59,8 @@ class GatedResnetBlock(nn.Module):
         c1 = a1 * torch.sigmoid(b1) + x1
 
         # [batch, 2 * in_channels, H, W]
-        aux = self.nin(concat_elu(c1))
-        c2 = concat_elu(self.down_right_conv2(concat_elu(self.down_right_conv1(concat_elu(x2)))) + aux)
+        aux = self.nin(self.activation(c1))
+        c2 = self.activation(self.down_right_conv2(self.activation(self.down_right_conv1(self.activation(x2)))) + aux)
         # dropout
         c2 = self.dropout(c2)
         a2, b2 = (self.down_right_conv3(c2) + hc).chunk(2, 1)
@@ -114,12 +121,15 @@ class UpSamplingBlock(nn.Module):
 
 
 class NINBlock(nn.Module):
-    def __init__(self, num_filters):
+    def __init__(self, num_filters, activation=concat_elu):
         super(NINBlock, self).__init__()
-        self.nin = Conv2dWeightNorm(2 * num_filters, num_filters, kernel_size=(1, 1))
+        assert activation in [elu, concat_elu]
+        gain = 1 if activation == elu else 2
+        self.activation = activation
+        self.nin = Conv2dWeightNorm(gain * num_filters, num_filters, kernel_size=(1, 1))
 
     def forward(self, x, residual):
-        residual = self.nin(concat_elu(residual))
+        residual = self.nin(self.activation(residual))
         return x + residual
 
 
@@ -150,7 +160,7 @@ class UpSampling(nn.Module):
 
 
 class PixelCNNPP(nn.Module):
-    def __init__(self, levels, in_channels, out_channels, num_resnets, h_channels=0, dropout=0.0):
+    def __init__(self, levels, in_channels, out_channels, num_resnets, h_channels=0, dropout=0.0, activation='concat_elu'):
         """
 
         Args:
@@ -167,6 +177,9 @@ class PixelCNNPP(nn.Module):
         nins2 = []
         up_hs = []
 
+        assert activation in ['elu', 'concat_elu']
+        activation = elu if activation == 'elu' else concat_elu
+
         ori_h_channels = h_channels
         # ////////// up pass //////////
         for l in range(levels):
@@ -175,8 +188,8 @@ class PixelCNNPP(nn.Module):
                 up_hs.append(Identity())
             else:
                 up_layers.append(DownSamplingBlock(out_channels))
-                nins1.append(NINBlock(out_channels))
-                nins2.append(NINBlock(out_channels))
+                nins1.append(NINBlock(out_channels, activation))
+                nins2.append(NINBlock(out_channels, activation))
                 if h_channels:
                     up_hs.append(DownSampling(h_channels))
                     h_channels = h_channels * 2
@@ -184,9 +197,9 @@ class PixelCNNPP(nn.Module):
                     up_hs.append(Identity())
 
             for rep in range(num_resnets):
-                up_layers.append(GatedResnetBlock(out_channels, h_channels, dropout))
-                nins1.append(NINBlock(out_channels))
-                nins2.append(NINBlock(out_channels))
+                up_layers.append(GatedResnetBlock(out_channels, h_channels, dropout, activation))
+                nins1.append(NINBlock(out_channels, activation))
+                nins2.append(NINBlock(out_channels, activation))
                 up_hs.append(Identity())
 
         # ////////// down pass //////////
@@ -194,7 +207,7 @@ class PixelCNNPP(nn.Module):
         down_hs = []
         for l in range(levels):
             for rep in range(num_resnets):
-                down_layers.append(GatedResnetBlock(out_channels, h_channels, dropout))
+                down_layers.append(GatedResnetBlock(out_channels, h_channels, dropout, activation))
                 down_hs.append(Identity())
 
             if l < levels - 1:
