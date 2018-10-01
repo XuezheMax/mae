@@ -99,7 +99,7 @@ def discretized_mix_logistic_loss(x, means, logscales, coeffs, bin_size, lower, 
     cdf_plus = torch.sigmoid(plus_in)
     # lower < x < upper
     cdf_delta = cdf_plus - cdf_min
-    log_cdf_mid = torch.log(cdf_delta + eps)
+    log_cdf_mid = torch.log(cdf_delta.clamp(min=eps))
     log_cdf_approx = x_in - logscales - 2. * F.softplus(x_in) + np.log(2 * bin_size)
 
     # x < lower

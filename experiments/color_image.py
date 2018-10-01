@@ -87,10 +87,10 @@ exponentialMovingAverage(mae, mae_shadow, polyak_decay, init=True)
 print(args)
 
 lr = args.lr
-betas = (0.95, 0.9995)
+betas = (0.9, 0.999)
 eps = 1e-8
 optimizer = optim.Adam(mae.parameters(), lr=lr, betas=betas, eps=eps)
-step_decay = 0.999997
+step_decay = 0.999995
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
 lr_min = 0.5e-4
 

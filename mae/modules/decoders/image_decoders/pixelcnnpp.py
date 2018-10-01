@@ -30,11 +30,8 @@ class _PixelCNNPPCore(nn.Module):
         self.core = PixelCNNPP(3, nc, hidden_channels, num_resnets, h_channels, dropout=dropout)
         self.output = nn.Sequential(
             nn.ELU(),
-            # state [64, 32, 32]
-            Conv2dWeightNorm(hidden_channels, hidden_channels, 1, bias=False),
-            nn.ELU(),
-            # state [64, 32, 32]
-            Conv2dWeightNorm(64, (nc * 3 + 1) * nmix, 1, bias=False)
+            # state [hidden_channels, 32, 32]
+            Conv2dWeightNorm(hidden_channels, (nc * 3 + 1) * nmix, 1, bias=False)
         )
 
     def forward(self, x, z):
