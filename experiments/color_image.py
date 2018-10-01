@@ -17,19 +17,20 @@ from torch.nn.utils import clip_grad_norm_
 
 from mae.data import load_datasets, iterate_minibatches, get_batch
 from mae.modules import MAE
+from mae.modules import exponentialMovingAverage
 
 parser = argparse.ArgumentParser(description='MAE Binary Image Example')
 parser.add_argument('--config', type=str, help='config file', required=True)
 parser.add_argument('--data', choices=['cifar10', 'lsun'], help='data set', required=True)
-parser.add_argument('--batch-size', type=int, default=100, metavar='N', help='input batch size for training (default: 128)')
-parser.add_argument('--epochs', type=int, default=500, metavar='N', help='number of epochs to train (default: 10)')
+parser.add_argument('--batch-size', type=int, default=64, metavar='N', help='input batch size for training (default: 64)')
+parser.add_argument('--epochs', type=int, default=1000, metavar='N', help='number of epochs to train (default: 10)')
 parser.add_argument('--seed', type=int, default=524287, metavar='S', help='random seed (default: 524287)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
 parser.add_argument('--lr', type=float, default=0.001, help='initial learning rate')
 parser.add_argument('--eta', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--gamma', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--free-bits', type=float, default=0.0, metavar='N', help='free bits used in training.')
-parser.add_argument('--schedule', type=int, default=50, help='schedule for learning rate decay')
+parser.add_argument('--polyak', type=float, default=0.999, help='Exponential decay rate of the sum of previous model iterates during Polyak averaging')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 
 args = parser.parse_args()
@@ -75,28 +76,29 @@ print(len(train_index))
 print(len(val_index))
 print(len(test_data))
 
+polyak_decay = args.polyak
 params = json.load(open(args.config, 'r'))
 json.dump(params, open(os.path.join(model_path, 'config.json'), 'w'), indent=2)
 mae = MAE.from_params(params).to(device)
+# create shadow mae for ema
+params = json.load(open(args.config, 'r'))
+mae_shadow = MAE.from_params(params).to(device)
+exponentialMovingAverage(mae, mae_shadow, polyak_decay, init=True)
 print(args)
 
 lr = args.lr
-betas = (0.95, 0.9995)
-eps = 1e-6
+betas = (0.9, 0.999)
+eps = 1e-8
 optimizer = optim.Adam(mae.parameters(), lr=lr, betas=betas, eps=eps)
 step_decay = 0.999995
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
-decay_rate = 0.75
-schedule = args.schedule
 lr_min = 0.5e-4
 
 patient = 0
-decay = 0
-max_decay = 3
 
 
 def train(epoch):
-    print('Epoch: %d lr=%.6f, decay rate=%.2f (schedule=%d, patient=%d, decay=%d)' % (epoch, lr, decay_rate, schedule, patient, decay))
+    print('Epoch: %d (lr=%.6f, patient=%d)' % (epoch, lr, patient))
     mae.train()
     recon_loss = 0
     kl_loss = 0
@@ -119,6 +121,7 @@ def train(epoch):
         clip_grad_norm_(mae.parameters(), 5.0)
         optimizer.step()
         scheduler.step()
+        exponentialMovingAverage(mae, mae_shadow, polyak_decay)
 
         with torch.no_grad():
             num_insts += batch_size
@@ -155,7 +158,7 @@ def train(epoch):
                     time.time() - start_time))
 
 
-def eval(eval_data, eval_index):
+def fake_eval(eval_data, eval_index):
     mae.eval()
     recon_loss = 0.
     kl_loss = 0.
@@ -194,16 +197,57 @@ def eval(eval_data, eval_index):
         test_loss, test_elbo, recon_loss, kl_loss,
         pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss,
         bits_per_pixel))
+
+
+def eval(eval_data, eval_index):
+    mae_shadow.eval()
+    recon_loss = 0.
+    kl_loss = 0.
+    pkl_mean = 0.
+    pkl_mean_loss = 0.
+    pkl_std_loss = 0.
+    pkl_std = 0.
+    num_insts = 0
+    num_batches = 0
+    for i, (data, _) in enumerate(iterate_minibatches(eval_data, eval_index, 200, False)):
+        data = data.to(device)
+
+        batch_size = len(data)
+        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae_shadow.loss(data, nsamples=test_k, eta=eta, gamma=gamma)
+
+        num_insts += batch_size
+        num_batches += 1
+        recon_loss += recon.sum()
+        kl_loss += kl.sum()
+        pkl_mean += pkl_m
+        pkl_std += pkl_s
+        pkl_mean_loss += loss_pkl_mean
+        pkl_std_loss += loss_pkl_std
+
+    recon_loss /= num_insts
+    kl_loss /= num_insts
+    pkl_mean /= num_batches
+    pkl_mean_loss /= num_batches
+    pkl_std /= num_batches
+    pkl_std_loss /= num_batches
+    test_loss = recon_loss + kl_loss + pkl_mean_loss + pkl_std_loss
+    test_elbo = recon_loss + kl_loss
+    bits_per_pixel = test_elbo / (nx * np.log(2.0))
+
+    print('loss: {:.2f} (elbo: {:.2f} recon: {:.2f}, kl: {:.2f}, pkl (mean, std): {:.2f}, {:.2f}, pkl_loss (mean, std): {:.2f}, {:.2f}), BPD: {:.2f}'.format(
+        test_loss, test_elbo, recon_loss, kl_loss,
+        pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss,
+        bits_per_pixel))
     return test_loss, recon_loss, kl_loss, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss, bits_per_pixel
 
 
 def reconstruct():
-    mae.eval()
+    mae_shadow.eval()
     n = 128
     data, _ = get_batch(test_data, test_index[:n])
     data = data.to(device)
 
-    recon_img, _ = mae.reconstruct(data)
+    recon_img, _ = mae_shadow.reconstruct(data)
     comparison = torch.cat([data, recon_img], dim=0).cpu()
     reorder_index = torch.from_numpy(np.array([[i + j * n for j in range(2)] for i in range(n)])).view(-1)
     comparison = comparison[reorder_index]
@@ -212,7 +256,7 @@ def reconstruct():
 
 
 def calc_nll():
-    mae.eval()
+    mae_shadow.eval()
     start_time = time.time()
     nll_elbo = 0.
     recon_err = 0.
@@ -224,7 +268,7 @@ def calc_nll():
 
         batch_size = len(data)
         num_insts += batch_size
-        (elbo, recon, kl), iw = mae.nll(data, k)
+        (elbo, recon, kl), iw = mae_shadow.nll(data, k)
         nll_elbo += elbo.sum()
         recon_err += recon.sum()
         kl_err += kl.sum()
@@ -255,11 +299,12 @@ for epoch in range(1, args.epochs + 1):
     lr = scheduler.get_lr()[0]
     print('----------------------------------------------------------------------------------------------------------------------------')
     with torch.no_grad():
+        fake_eval(train_data, val_index)
         loss, recon, kl, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss, bits_per_pixel = eval(train_data, val_index)
     elbo = recon + kl
     if elbo < best_elbo:
         patient = 0
-        torch.save(mae.state_dict(), model_name)
+        torch.save(mae_shadow.state_dict(), model_name)
 
         best_epoch = epoch
         best_loss = loss
@@ -271,13 +316,6 @@ for epoch in range(1, args.epochs + 1):
         best_pkl_std = pkl_std
         best_pkl_std_loss = pkl_std_loss
         best_bpd = bits_per_pixel
-    elif patient >= schedule:
-        mae.load_state_dict(torch.load(model_name))
-        lr = lr * decay_rate
-        optimizer = optim.Adam(mae.parameters(), lr=lr, betas=betas, eps=eps)
-        scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
-        patient = 0
-        decay +=1
     else:
         patient += 1
 
@@ -287,14 +325,14 @@ for epoch in range(1, args.epochs + 1):
         best_bpd, best_epoch))
     print('============================================================================================================================')
 
-    if decay == max_decay or lr < lr_min:
+    if lr < lr_min:
         break
 
-mae.load_state_dict(torch.load(model_name))
+mae_shadow.load_state_dict(torch.load(model_name))
 with torch.no_grad():
     reconstruct()
-    sample_z, _ = mae.sample_from_proir(256, device=device)
-    sample_x, _ = mae.decode(sample_z, random_sample=True)
+    sample_z, _ = mae_shadow.sample_from_proir(256, device=device)
+    sample_x, _ = mae_shadow.decode(sample_z, random_sample=True)
     image_file = 'sample.png'
     save_image(sample_x.cpu(), os.path.join(result_path, image_file), nrow=16, normalize=True, scale_each=True, range=(-1, 1))
 
