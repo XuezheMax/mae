@@ -31,10 +31,10 @@ class _PixelCNNPPCore(nn.Module):
         self.output = nn.Sequential(
             nn.ELU(),
             # state [hidden_channels, 32, 32]
-            Conv2dWeightNorm(hidden_channels, 2 * hidden_channels, 1, bias=False),
+            Conv2dWeightNorm(hidden_channels, hidden_channels, 1, bias=False),
             nn.ELU(),
             # state [hidden_channels * 2, 32, 32]
-            Conv2dWeightNorm(2 * hidden_channels, (nc * 3 + 1) * nmix, 1, bias=False)
+            Conv2dWeightNorm(hidden_channels, (nc * 3 + 1) * nmix, 1, bias=False)
             # state [10 * nmix, 32, 32]
         )
 
