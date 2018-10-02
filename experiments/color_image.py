@@ -302,7 +302,11 @@ for epoch in range(1, args.epochs + 1):
         fake_eval(train_data, val_index)
         loss, recon, kl, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss, bits_per_pixel = eval(train_data, val_index)
     elbo = recon + kl
-    if elbo < best_elbo:
+    if torch.isnan(elbo):
+        print('unstable training. Return to the last check point.')
+        mae.load_state_dict(torch.load(model_name))
+        mae_shadow.load_state_dict(torch.load(model_name))
+    elif elbo < best_elbo:
         patient = 0
         torch.save(mae_shadow.state_dict(), model_name)
 
