@@ -23,16 +23,18 @@ class LinearWeightNorm(nn.Module):
         )
 
     def initialize(self, x, init_scale=1.0):
-        # [batch, out_features]
-        x = self.linear(x)
-        # [out_features]
-        mean = x.mean(dim=0)
-        std = x.std(dim=0)
-        inv_stdv = init_scale / (std + 1e-10)
         with torch.no_grad():
+            # [batch, out_features]
+            out = self(x)
+            # [out_features]
+            mean = out.mean(dim=0)
+            std = out.std(dim=0)
+            inv_stdv = init_scale / (std + 1e-10)
+
             self.linear.weight_g.mul_(inv_stdv.unsqueeze(1))
             if self.linear.bias is not None:
                 self.linear.bias.add_(-mean).mul_(inv_stdv)
+            return self(x)
 
     def forward(self, input):
         return self.linear(input)
@@ -57,18 +59,20 @@ class Conv2dWeightNorm(nn.Module):
         self.conv = nn.utils.weight_norm(self.conv)
 
     def initialize(self, x, init_scale=1.0):
-        # [batch, n_channels, H, W]
-        x = self.conv(x)
-        n_channels = x.size(1)
-        x = x.transpose(0, 1).contiguous().view(n_channels, -1)
-        # [n_channels]
-        mean = x.mean(dim=1)
-        std = x.std(dim=1)
-        inv_stdv = init_scale / (std + 1e-10)
         with torch.no_grad():
+            # [batch, n_channels, H, W]
+            out = self(x)
+            n_channels = out.size(1)
+            out = out.transpose(0, 1).contiguous().view(n_channels, -1)
+            # [n_channels]
+            mean = out.mean(dim=1)
+            std = out.std(dim=1)
+            inv_stdv = init_scale / (std + 1e-10)
+
             self.conv.weight_g.mul_(inv_stdv.view(n_channels, 1, 1, 1))
             if self.conv.bias is not None:
                 self.conv.bias.add_(-mean).mul_(inv_stdv)
+            return self(x)
 
     def forward(self, input):
         return self.conv(input)
@@ -101,18 +105,20 @@ class ConvTranspose2dWeightNorm(nn.Module):
         return self.deconv._output_padding(input, output_size)
 
     def initialize(self, x, init_scale=1.0):
-        # [batch, n_channels, H, W]
-        x = self.deconv(x)
-        n_channels = x.size(1)
-        x = x.transpose(0, 1).contiguous().view(n_channels, -1)
-        # [n_channels]
-        mean = x.mean(dim=1)
-        std = x.std(dim=1)
-        inv_stdv = init_scale / (std + 1e-10)
         with torch.no_grad():
+            # [batch, n_channels, H, W]
+            out = self(x)
+            n_channels = out.size(1)
+            out = out.transpose(0, 1).contiguous().view(n_channels, -1)
+            # [n_channels]
+            mean = out.mean(dim=1)
+            std = out.std(dim=1)
+            inv_stdv = init_scale / (std + 1e-10)
+
             self.deconv.weight_g.mul_(inv_stdv.view(1, n_channels, 1, 1))
-            if self.conv.bias is not None:
-                self.conv.bias.add_(-mean).mul_(inv_stdv)
+            if self.deconv.bias is not None:
+                self.deconv.bias.add_(-mean).mul_(inv_stdv)
+            return self(x)
 
     def forward(self, input):
         return self.deconv(input)

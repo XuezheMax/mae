@@ -84,6 +84,20 @@ class MaskedLinear(nn.Module):
         if self.bias is not None:
             nn.init.constant_(self.bias, 0.)
 
+    def initialize(self, x, init_scale=1.0):
+        with torch.no_grad():
+            # [batch, out_features]
+            out = self(x)
+            # [out_features]
+            mean = out.mean(dim=0)
+            std = out.std(dim=0)
+            inv_stdv = init_scale / (std + 1e-10)
+
+            self.weight_g.add_(inv_stdv.log().unsqueeze(1))
+            if self.bias is not None:
+                self.bias.add_(-mean).mul_(inv_stdv)
+        return self(x)
+
     def forward(self, input):
         self.weight_v.data.mul_(self.mask)
         _norm = norm(self.weight_v, 0) + 1e-8
@@ -159,6 +173,21 @@ class MaskedConv2d(nn.Module):
         self.weight_g.data.copy_(_norm.log())
         if self.bias is not None:
             nn.init.constant_(self.bias, 0)
+
+    def initialize(self, x, init_scale=1.0):
+        # [batch, n_channels, H, W]
+        out = self(x)
+        n_channels = out.size(1)
+        out = out.transpose(0, 1).contiguous().view(n_channels, -1)
+        # [n_channels]
+        mean = out.mean(dim=1)
+        std = out.std(dim=1)
+        inv_stdv = init_scale / (std + 1e-10)
+        with torch.no_grad():
+            self.weight_g.add_(inv_stdv.log().view(n_channels, 1, 1, 1))
+            if self.bias is not None:
+                self.bias.add_(-mean).mul_(inv_stdv)
+        return self(x)
 
     def forward(self, input):
         self.weight_v.data.mul_(self.mask)
