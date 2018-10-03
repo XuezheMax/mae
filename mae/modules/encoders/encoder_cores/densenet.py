@@ -42,6 +42,18 @@ class DenseNetEncoderCoreColorImage32x32(EncoderCore):
             # [2 * z_channels, 8, 8]
         )
 
+    @overrides
+    def initialize(self, x, init_scale=1.0):
+        output = x
+        for layer in self.main:
+            if isinstance(layer, nn.ELU):
+                output = layer(output)
+            else:
+                output = layer.initialize(output, init_scale=init_scale)
+        # [batch, z_channels, 8, 8]
+        mu, logvar = output.chunk(2, 1)
+        return mu, F.hardtanh(logvar, min_val=-7, max_val=7.)
+
     def forward(self, input):
         # [batch, 2 * z_channels, 8, 8]
         output = self.main(input)
