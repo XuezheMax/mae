@@ -160,6 +160,21 @@ class MAE(nn.Module):
         # [batch, k, z_shape] -> [batch, z_shape] --> [batch, x_shape]
         return self.decode(z.mean(dim=1), random_sample=random_sample)
 
+    def initialize(self, x, init_scale=1.0):
+        """
+
+        Args:
+            x: Tensor
+                The input data used for initialization
+            init_scale: float
+                initial scale
+        Returns: Tensor
+            the tensor of output
+
+        """
+        z = self.encoder.initialize(x, init_scale=init_scale)
+        return self.decoder.initialize(z, init_scale=init_scale)
+
     def nll(self, x, k):
         """
         compute negative log-likelihood via importance weighted elbo.

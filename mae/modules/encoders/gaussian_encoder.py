@@ -62,6 +62,36 @@ class GaussianEncoder(Encoder):
         return eps.mul(std.unsqueeze(1)).add(mu.unsqueeze(1))
 
     @overrides
+    def initialize(self, x, init_scale=1.0):
+        """
+
+        Args:
+            x: Tensor
+                The input data used for initialization
+            init_scale: float
+                initial scale
+        Returns: Tensor
+            the tensor of output
+
+        """
+        # initialize core
+        core = self.core if isinstance(self.core, EncoderCore) else self.core.module
+        assert isinstance(core, EncoderCore)
+        # [batch, z_shape]
+        mu, logvar = core.initialize(x, init_scale=1.0)
+
+        # initialize posterior
+        if self.posterior_flow is not None:
+            # [batch * nsamples, flow_shape]
+            z, logdet = self.posterior_flow.forward(mu.view(mu.size(0), *self.posterior_flow.input_size()), init=True, init_scale=init_scale)
+        else:
+            z = mu
+        # initialize prior
+        if self.prior_flow is not None:
+            self.prior_flow.backward(z, init=True, init_scale=init_scale)
+        return z
+
+    @overrides
     def sample_from_posterior(self, x, nsamples=1):
         """
 
