@@ -31,7 +31,7 @@ class MADE(nn.Module):
         total_units = input_size - 1
 
         self.input_layer = MaskedLinear(input_size, hidden_size, ('input-hidden', order), total_units, bias=bias)
-        self.direct_connect = MaskedLinear(input_size, input_size, ('input-output', order), total_units, bias=False)
+        self.direct_connect = MaskedLinear(input_size, input_size, ('input-output', order), total_units, bias=bias)
 
         max_units = self.input_layer.max_units
         self.hidden_layers = []
@@ -43,6 +43,16 @@ class MADE(nn.Module):
         assert self.num_hiddens == len(self.hidden_layers) + 1
 
         self.output_layer = MaskedLinear(hidden_size, input_size, ('hidden-output', order), total_units, max_units=max_units, bias=bias)
+
+    def initialize(self, x, init_scale=1.0):
+        out = self.input_layer.initialize(x, init_scale=init_scale)
+        out = self.activation(out)
+        for hidden_layer in self.hidden_layers:
+            out = hidden_layer.initialize(out, init_scale=init_scale)
+            out = self.activation(out)
+        out = self.output_layer.initialize(out, init_scale=init_scale)
+        direct = self.direct_connect.initialize(x, init_scale=init_scale)
+        return out + direct
 
     def forward(self, x):
         output = self.activation(self.input_layer(x))
@@ -81,7 +91,7 @@ class MADE2d(nn.Module):
         kH, kW = _pair(kernel_size)
         padding = (kH // 2, kW // 2)
         self.top_layer = MaskedConv2d(in_channels, hidden_channels, kernel_size, mask_type='A', order=order, padding=padding, bias=bias, init_gain=gain)
-        self.direct_connect = MaskedConv2d(in_channels, in_channels, kernel_size, mask_type='A', order=order, padding=padding, bias=False, init_gain=gain)
+        self.direct_connect = MaskedConv2d(in_channels, in_channels, kernel_size, mask_type='A', order=order, padding=padding, bias=bias, init_gain=gain)
 
         self.hidden_layers = []
         for i in range(num_hiddens - 1):
@@ -94,6 +104,16 @@ class MADE2d(nn.Module):
         out_kernel = _pair(hidden_kernels[-1])
         padding = (out_kernel[0] // 2, out_kernel[1] // 2)
         self.output_layer = MaskedConv2d(hidden_channels, in_channels, out_kernel, mask_type='B', order=order, padding=padding, bias=bias, init_gain=gain)
+
+    def initialize(self, x, init_scale=1.0):
+        out = self.top_layer.initialize(x, init_scale=init_scale)
+        out = self.activation(out)
+        for hidden_layer in self.hidden_layers:
+            ime = hidden_layer.initialize(out, init_scale=init_scale)
+            out = self.activation(ime + out)
+        out = self.output_layer.initialize(out, init_scale=init_scale)
+        direct = self.direct_connect.initialize(x, init_scale=init_scale)
+        return out + direct
 
     def forward(self, x):
         output = self.activation(self.top_layer(x))
