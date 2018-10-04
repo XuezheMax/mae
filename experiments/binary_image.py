@@ -116,7 +116,7 @@ patient = 0
 
 
 def train(epoch):
-    real_free_bits = free_bits if epoch > 10 else free_bits / 10.0 * (epoch - 1)
+    real_free_bits = free_bits if epoch > 10 else 0.0
     print('Epoch: %d (lr=%.6f, free_bits=%.1f, patient=%d)' % (epoch, lr, real_free_bits, patient))
     mae.train()
     recon_loss = 0
