@@ -77,7 +77,8 @@ class MaskedLinear(nn.Module):
         self._init = True
 
     def reset_parameters(self):
-        nn.init.xavier_uniform_(self.weight_v, gain=1.0)
+        # nn.init.xavier_uniform_(self.weight_v, gain=1.0)
+        nn.init.normal_(self.weight_v, mean=0.0, std=0.05)
         self.weight_v.data.mul_(self.mask)
         _norm = norm(self.weight_v, 0).data + 1e-8
         self.weight_g.data.copy_(_norm.log())
@@ -167,7 +168,8 @@ class MaskedConv2d(nn.Module):
         self.reset_parameters(init_gain=init_gain)
 
     def reset_parameters(self, init_gain):
-        nn.init.xavier_normal_(self.weight_v, gain=init_gain)
+        # nn.init.xavier_normal_(self.weight_v, gain=init_gain)
+        nn.init.normal_(self.weight_v, mean=0.0, std=0.05)
         self.weight_v.data.mul_(self.mask)
         _norm = norm(self.weight_v, 0).data + 1e-8
         self.weight_g.data.copy_(_norm.log())
