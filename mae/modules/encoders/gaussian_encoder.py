@@ -121,7 +121,7 @@ class GaussianEncoder(Encoder):
             z = mu
         # initialize prior
         if self.prior_flow is not None:
-            self.prior_flow.backward(z, init=True, init_scale=init_scale * 0.1)
+            self.prior_flow.backward(z, init=True, init_scale=init_scale)
         return z
 
     @overrides
