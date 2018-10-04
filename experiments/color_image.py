@@ -88,8 +88,9 @@ init_data = init_data.to(device)
 mae.eval()
 mae.initialize(init_data, init_scale=1.0)
 print('init loss')
-print(mae.loss(init_data, nsamples=test_k, eta=eta, gamma=gamma)[0])
-input()
+with torch.no_grad():
+    print(mae.loss(init_data, nsamples=test_k, eta=eta, gamma=gamma)[0])
+    input()
 # create shadow mae for ema
 params = json.load(open(args.config, 'r'))
 mae_shadow = MAE.from_params(params).to(device)
