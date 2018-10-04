@@ -51,9 +51,11 @@ class AF2dMADEBlock(nn.Module):
 
     def initialize(self, y, init_scale=1.0):
         # [batch, x_shape]
-        mu = self.mu.initialize(y, init_scale=init_scale)
+        # mu = self.mu.initialize(y, init_scale=init_scale)
+        mu = self.mu(y)
         if self.logvar:
-            logstd = self.logvar.initialize(y, init_scale=init_scale) * 0.5
+            # logstd = self.logvar.initialize(y, init_scale=init_scale) * 0.5
+            logstd = self.logvar(y) * 0.5
         else:
             logstd = mu.new_zeros(mu.size())
 
