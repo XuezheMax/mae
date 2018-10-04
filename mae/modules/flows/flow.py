@@ -25,12 +25,16 @@ class Flow(nn.Module):
         raise NotImplementedError
 
     @overrides
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor, init=False, init_scale=1.0) -> Tuple[torch.Tensor, torch.Tensor]:
         """
 
         Args:
             x: Tensor
                 The random variable before flow
+            init: bool
+                perform initialization or not (default: False)
+            init_scale: float
+                initial scale (default: 1.0)
 
         Returns: y: Tensor, logdet: Tensor
             y, the random variable after flow
@@ -40,12 +44,16 @@ class Flow(nn.Module):
         """
         raise NotImplementedError
 
-    def backward(self, y: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def backward(self, y: torch.Tensor, init=False, init_scale=1.0) -> Tuple[torch.Tensor, torch.Tensor]:
         """
 
         Args:
             y: Tensor
                 The random variable after flow
+            init: bool
+                perform initialization or not (default: False)
+            init_scale: float
+                initial scale (default: 1.0)
 
         Returns: x: Tensor, logdet: Tensor
             x, the random variable before flow

@@ -52,6 +52,23 @@ class ColorImageDecoder(Decoder):
         return mu, log_scale.clamp(min=-7.), F.log_softmax(logit_probs, dim=1), coeffs.tanh()
 
     @overrides
+    def initialize(self, x, z, init_scale=1.0):
+        """
+
+        Args:
+            x: Tensor
+                The input data used for initialization, shape = [batch, x_shape]
+            z: Tensor
+                The input latent code used for initialization, shape = [batch, z_shape]
+            init_scale: float
+                initial scale
+        Returns: Tensor
+            the tensor of output
+
+        """
+        raise NotImplementedError
+
+    @overrides
     def decode(self, z, random_sample):
         """
         This decoding method only fits to independent distributions, not for auto-regressive decoders

@@ -1,6 +1,7 @@
 __author__ = 'max'
 
 from overrides import overrides
+import torch
 import torch.nn as nn
 
 
@@ -11,7 +12,7 @@ class LinearWeightNorm(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        nn.init.xavier_uniform_(self.linear.weight)
+        nn.init.normal_(self.linear.weight, mean=0.0, std=0.05)
         if self.linear.bias is not None:
             nn.init.constant_(self.linear.bias, 0)
         self.linear = nn.utils.weight_norm(self.linear)
@@ -20,6 +21,20 @@ class LinearWeightNorm(nn.Module):
         return 'in_features={}, out_features={}, bias={}'.format(
             self.in_features, self.out_features, self.bias is not None
         )
+
+    def initialize(self, x, init_scale=1.0):
+        with torch.no_grad():
+            # [batch, out_features]
+            out = self(x)
+            # [out_features]
+            mean = out.mean(dim=0)
+            std = out.std(dim=0)
+            inv_stdv = init_scale / (std + 1e-6)
+
+            self.linear.weight_g.mul_(inv_stdv.unsqueeze(1))
+            if self.linear.bias is not None:
+                self.linear.bias.add_(-mean).mul_(inv_stdv)
+            return self(x)
 
     def forward(self, input):
         return self.linear(input)
@@ -38,10 +53,26 @@ class Conv2dWeightNorm(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        nn.init.xavier_normal_(self.conv.weight)
+        nn.init.normal_(self.conv.weight, mean=0.0, std=0.05)
         if self.conv.bias is not None:
             nn.init.constant_(self.conv.bias, 0)
         self.conv = nn.utils.weight_norm(self.conv)
+
+    def initialize(self, x, init_scale=1.0):
+        with torch.no_grad():
+            # [batch, n_channels, H, W]
+            out = self(x)
+            n_channels = out.size(1)
+            out = out.transpose(0, 1).contiguous().view(n_channels, -1)
+            # [n_channels]
+            mean = out.mean(dim=1)
+            std = out.std(dim=1)
+            inv_stdv = init_scale / (std + 1e-6)
+
+            self.conv.weight_g.mul_(inv_stdv.view(n_channels, 1, 1, 1))
+            if self.conv.bias is not None:
+                self.conv.bias.add_(-mean).mul_(inv_stdv)
+            return self(x)
 
     def forward(self, input):
         return self.conv(input)
@@ -65,13 +96,29 @@ class ConvTranspose2dWeightNorm(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        nn.init.xavier_normal_(self.deconv.weight)
+        nn.init.normal_(self.deconv.weight, mean=0.0, std=0.05)
         if self.deconv.bias is not None:
             nn.init.constant_(self.deconv.bias, 0)
-        self.deconv = nn.utils.weight_norm(self.deconv)
+        self.deconv = nn.utils.weight_norm(self.deconv, dim=1)
 
     def _output_padding(self, input, output_size):
         return self.deconv._output_padding(input, output_size)
+
+    def initialize(self, x, init_scale=1.0):
+        with torch.no_grad():
+            # [batch, n_channels, H, W]
+            out = self(x)
+            n_channels = out.size(1)
+            out = out.transpose(0, 1).contiguous().view(n_channels, -1)
+            # [n_channels]
+            mean = out.mean(dim=1)
+            std = out.std(dim=1)
+            inv_stdv = init_scale / (std + 1e-6)
+
+            self.deconv.weight_g.mul_(inv_stdv.view(1, n_channels, 1, 1))
+            if self.deconv.bias is not None:
+                self.deconv.bias.add_(-mean).mul_(inv_stdv)
+            return self(x)
 
     def forward(self, input):
         return self.deconv(input)

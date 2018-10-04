@@ -80,6 +80,13 @@ polyak_decay = args.polyak
 params = json.load(open(args.config, 'r'))
 json.dump(params, open(os.path.join(model_path, 'config.json'), 'w'), indent=2)
 mae = MAE.from_params(params).to(device)
+# initialize
+init_batch_size = 128
+init_index = np.random.choice(train_index, init_batch_size, replace=False)
+init_data, _ = get_batch(train_data, init_index)
+init_data = init_data.to(device)
+mae.eval()
+mae.initialize(init_data, init_scale=1.0)
 # create shadow mae for ema
 params = json.load(open(args.config, 'r'))
 mae_shadow = MAE.from_params(params).to(device)
@@ -156,47 +163,6 @@ def train(epoch):
                     pkl_mean / num_batches, pkl_std / num_batches,
                     pkl_mean_loss / num_batches, pkl_std_loss / num_batches,
                     time.time() - start_time))
-
-
-def fake_eval(eval_data, eval_index):
-    mae.eval()
-    recon_loss = 0.
-    kl_loss = 0.
-    pkl_mean = 0.
-    pkl_mean_loss = 0.
-    pkl_std_loss = 0.
-    pkl_std = 0.
-    num_insts = 0
-    num_batches = 0
-    for i, (data, _) in enumerate(iterate_minibatches(eval_data, eval_index, 200, False)):
-        data = data.to(device)
-
-        batch_size = len(data)
-        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(data, nsamples=test_k, eta=eta, gamma=gamma)
-
-        num_insts += batch_size
-        num_batches += 1
-        recon_loss += recon.sum()
-        kl_loss += kl.sum()
-        pkl_mean += pkl_m
-        pkl_std += pkl_s
-        pkl_mean_loss += loss_pkl_mean
-        pkl_std_loss += loss_pkl_std
-
-    recon_loss /= num_insts
-    kl_loss /= num_insts
-    pkl_mean /= num_batches
-    pkl_mean_loss /= num_batches
-    pkl_std /= num_batches
-    pkl_std_loss /= num_batches
-    test_loss = recon_loss + kl_loss + pkl_mean_loss + pkl_std_loss
-    test_elbo = recon_loss + kl_loss
-    bits_per_pixel = test_elbo / (nx * np.log(2.0))
-
-    print('loss: {:.2f} (elbo: {:.2f} recon: {:.2f}, kl: {:.2f}, pkl (mean, std): {:.2f}, {:.2f}, pkl_loss (mean, std): {:.2f}, {:.2f}), BPD: {:.2f}'.format(
-        test_loss, test_elbo, recon_loss, kl_loss,
-        pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss,
-        bits_per_pixel))
 
 
 def eval(eval_data, eval_index):
@@ -299,7 +265,6 @@ for epoch in range(1, args.epochs + 1):
     lr = scheduler.get_lr()[0]
     print('----------------------------------------------------------------------------------------------------------------------------')
     with torch.no_grad():
-        fake_eval(train_data, val_index)
         loss, recon, kl, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss, bits_per_pixel = eval(train_data, val_index)
     elbo = recon + kl
     if elbo < best_elbo:

@@ -8,7 +8,7 @@
     "prior_flow": {
       "type": "af_made",
       "input_size": 32,
-      "num_blocks": 3
+      "num_blocks": 4
     },
     "ngpu": 1
   },

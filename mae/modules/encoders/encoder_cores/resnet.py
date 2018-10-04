@@ -23,10 +23,19 @@ class ResnetEncoderCoreBinaryImage28x28(EncoderCore):
         hidden_units = 512
         self.main = nn.Sequential(
             ResNet(self.nc, [32, 64, 64], [2, 2, 2]),
-            Conv2dWeightNorm(64, hidden_units, 4, 1, 0, bias=False),
+            Conv2dWeightNorm(64, hidden_units, 4, 1, 0, bias=True),
             nn.ELU(),
         )
-        self.linear = LinearWeightNorm(hidden_units, 2 * nz, bias=False)
+        self.linear = LinearWeightNorm(hidden_units, 2 * nz, bias=True)
+
+    @overrides
+    def initialize(self, x, init_scale=1.0):
+        assert len(self.main) == 3
+        output = self.main[0].initialize(x, init_scale=init_scale)
+        output = self.main[1].initialize(output, init_scale=init_scale)
+        output = self.main[2](output).view(output.size()[:2])
+        output = self.linear.initialize(output, init_scale=init_scale)
+        return output.chunk(2, 1)
 
     def forward(self, input):
         output = self.main(input)
@@ -57,22 +66,34 @@ class ResnetEncoderCoreColorImage32x32(EncoderCore):
         self.main = nn.Sequential(
             ResNet(self.nc, [48, 48], [1, 1]),
             # state [48, 32, 32]
-            Conv2dWeightNorm(48, 96, 3, 2, 1, bias=False),
+            Conv2dWeightNorm(48, 96, 3, 2, 1, bias=True),
             nn.ELU(),
             # state [96, 16, 16]
             ResNet(96, [96, 96], [1, 1]),
             # state [96, 16, 16]
-            Conv2dWeightNorm(96, 96, 3, 2, 1, bias=False),
+            Conv2dWeightNorm(96, 96, 3, 2, 1, bias=True),
             nn.ELU(),
             # state [96, 8, 8]
             ResNet(96, [96, 96, 96], [1, 1, 1]),
             # state [96, 8, 8]
-            Conv2dWeightNorm(96, 48, 1, 1, bias=False),
+            Conv2dWeightNorm(96, 48, 1, 1, bias=True),
             nn.ELU(),
             # state [48, 8, 8]
             Conv2dWeightNorm(48, 2 * self.z_channels, 1, 1, bias=True)
             # [2 * z_channels, 8, 8]
         )
+
+    @overrides
+    def initialize(self, x, init_scale=1.0):
+        output = x
+        for layer in self.main:
+            if isinstance(layer, nn.ELU):
+                output = layer(output)
+            else:
+                output = layer.initialize(output, init_scale=init_scale)
+        # [batch, z_channels, 8, 8]
+        mu, logvar = output.chunk(2, 1)
+        return mu, F.hardtanh(logvar, min_val=-7, max_val=7.)
 
     def forward(self, input):
         # [batch, 2 * z_channels, 8, 8]
