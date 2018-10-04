@@ -273,7 +273,7 @@ best_pkl_mean_loss = 1e12
 best_pkl_std = 1e12
 best_pkl_std_loss = 1e12
 
-real_free_bits = 0.0
+real_free_bits = free_bits
 for epoch in range(1, args.epochs + 1):
     train(epoch)
     lr = scheduler.get_lr()[0]
