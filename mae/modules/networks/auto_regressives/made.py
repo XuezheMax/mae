@@ -111,8 +111,8 @@ class MADE2d(nn.Module):
         for hidden_layer in self.hidden_layers:
             ime = hidden_layer.initialize(out, init_scale=init_scale)
             out = self.activation(ime + out)
-        out = self.output_layer.initialize(out, init_scale=init_scale)
-        direct = self.direct_connect.initialize(x, init_scale=init_scale)
+        out = self.output_layer.initialize(out, init_scale=init_scale * 0.5)
+        direct = self.direct_connect.initialize(x, init_scale=init_scale * 0.5)
         return out + direct
 
     def forward(self, x):
