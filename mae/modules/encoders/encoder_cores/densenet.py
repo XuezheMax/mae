@@ -52,7 +52,7 @@ class DenseNetEncoderCoreColorImage32x32(EncoderCore):
             else:
                 output = layer.initialize(output, init_scale=init_scale)
         mu = self.mu.initialize(output, init_scale=init_scale)
-        logvar = self.logvar.initialize(output, init_scale=init_scale * 0.1)
+        logvar = self.logvar.initialize(output, init_scale=init_scale)
         # [batch, z_channels, 8, 8]
         # mu, logvar = output.chunk(2, 1)
         return mu, F.hardtanh(logvar, min_val=-7, max_val=7.)
