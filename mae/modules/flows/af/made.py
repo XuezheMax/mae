@@ -51,34 +51,6 @@ class AFMADEBlock(nn.Module):
             logstd = self.logvar.initialize(y, init_scale=init_scale) * 0.5
         else:
             logstd = mu.new_zeros(mu.size())
-
-        # [batch, nz]
-        print('mu')
-        out = mu
-        mean = out.mean(dim=0)
-        std = out.std(dim=0)
-        print(mean)
-        print(std)
-        input()
-
-        # [batch, nz]
-        print('logstd')
-        out = logstd
-        mean = out.mean(dim=0)
-        std = out.std(dim=0)
-        print(mean)
-        print(std)
-        input()
-
-        # [batch, nz]
-        print('std')
-        out = logstd.exp()
-        mean = out.mean(dim=0)
-        std = out.std(dim=0)
-        print(mean)
-        print(std)
-        input()
-
         x = mu + y * logstd.exp()
         return x, logstd.sum(dim=1)
 

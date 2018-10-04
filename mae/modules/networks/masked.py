@@ -91,6 +91,7 @@ class MaskedLinear(nn.Module):
             # [out_features]
             mean = out.mean(dim=0)
             std = out.std(dim=0)
+            std = std + std.le(0).float()
             inv_stdv = init_scale / (std + 1e-6)
 
             self.weight_g.add_(inv_stdv.log().unsqueeze(1))
