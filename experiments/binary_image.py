@@ -99,7 +99,7 @@ init_index = np.random.choice(train_index, init_batch_size, replace=False)
 init_data, _ = get_batch(train_data, init_index)
 init_data = binarize_image(init_data).to(device)
 mae.eval()
-# mae.initialize(init_data, init_scale=1.0)
+mae.initialize(init_data, init_scale=1.0)
 # create shadow mae for ema
 params = json.load(open(args.config, 'r'))
 mae_shadow = MAE.from_params(params).to(device)
@@ -116,7 +116,7 @@ patient = 0
 
 
 def train(epoch):
-    print('Epoch: %d (lr=%.6f, free_bits=%.1f, patient=%d)' % (epoch, lr, real_free_bits, patient))
+    print('Epoch: %d (lr=%.6f, patient=%d)' % (epoch, lr, patient))
     mae.train()
     recon_loss = 0
     kl_loss = 0
@@ -133,7 +133,7 @@ def train(epoch):
 
         batch_size = len(binary_data)
         optimizer.zero_grad()
-        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binary_data, nsamples=training_k, eta=eta, gamma=gamma, free_bits=real_free_bits)
+        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binary_data, nsamples=training_k, eta=eta, gamma=gamma, free_bits=free_bits)
         loss.backward()
         clip_grad_norm_(mae.parameters(), 5.0)
         optimizer.step()
@@ -273,11 +273,9 @@ best_pkl_mean_loss = 1e12
 best_pkl_std = 1e12
 best_pkl_std_loss = 1e12
 
-real_free_bits = free_bits
 for epoch in range(1, args.epochs + 1):
     train(epoch)
     lr = scheduler.get_lr()[0]
-    real_free_bits = min(free_bits, real_free_bits + 0.1)
     print('----------------------------------------------------------------------------------------------------------------------------')
     with torch.no_grad():
         loss, recon, kl, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss = eval(val_binary_data, val_binary_index)

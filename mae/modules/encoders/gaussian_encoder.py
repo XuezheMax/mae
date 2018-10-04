@@ -93,7 +93,7 @@ class GaussianEncoder(Encoder):
         if self.prior_flow is not None:
             # [batch, flow_shape]
             z_reshape = z.view(mu.size(0), *self.prior_flow.input_size())
-            self.prior_flow.backward(z_reshape, init=True, init_scale=init_scale * 0.1)
+            # self.prior_flow.backward(z_reshape, init=True, init_scale=init_scale * 0.1)
         return z
 
     @overrides
