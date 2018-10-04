@@ -90,6 +90,7 @@ mae.initialize(init_data, init_scale=1.0)
 print('init loss')
 with torch.no_grad():
     loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(init_data, nsamples=test_k, eta=eta, gamma=gamma)
+    print(recon.sum())
     print(kl.sum())
     print(pkl_m)
     print(pkl_s)

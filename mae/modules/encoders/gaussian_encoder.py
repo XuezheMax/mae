@@ -80,27 +80,27 @@ class GaussianEncoder(Encoder):
         # [batch, z_shape]
         mu, logvar = core.initialize(x, init_scale=1.0)
 
-        print("mu")
-        out = mu
-        n_channels = out.size(1)
-        out = out.transpose(0, 1).contiguous().view(n_channels, -1)
-        # [n_channels]
-        mean = out.mean(dim=1)
-        std = out.std(dim=1)
-        print(mean)
-        print(std)
-        input()
-
-        print("logvar")
-        out = logvar
-        n_channels = out.size(1)
-        out = out.transpose(0, 1).contiguous().view(n_channels, -1)
-        # [n_channels]
-        mean = out.mean(dim=1)
-        std = out.std(dim=1)
-        print(mean)
-        print(std)
-        input()
+        # print("mu")
+        # out = mu
+        # n_channels = out.size(1)
+        # out = out.transpose(0, 1).contiguous().view(n_channels, -1)
+        # # [n_channels]
+        # mean = out.mean(dim=1)
+        # std = out.std(dim=1)
+        # print(mean)
+        # print(std)
+        # input()
+        #
+        # print("logvar")
+        # out = logvar
+        # n_channels = out.size(1)
+        # out = out.transpose(0, 1).contiguous().view(n_channels, -1)
+        # # [n_channels]
+        # mean = out.mean(dim=1)
+        # std = out.std(dim=1)
+        # print(mean)
+        # print(std)
+        # input()
 
         # initialize posterior
         if self.posterior_flow is not None:
@@ -110,7 +110,7 @@ class GaussianEncoder(Encoder):
             z = mu
         # initialize prior
         if self.prior_flow is not None:
-            self.prior_flow.backward(z, init=True, init_scale=init_scale)
+            self.prior_flow.backward(z, init=True, init_scale=init_scale * 0.1)
         return z
 
     @overrides
