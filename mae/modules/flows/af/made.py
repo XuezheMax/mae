@@ -55,8 +55,8 @@ class AFMADEBlock(nn.Module):
         # [batch, nz]
         print('mu')
         out = mu
-        mean = out.mean(dim=1)
-        std = out.std(dim=1)
+        mean = out.mean(dim=0)
+        std = out.std(dim=0)
         print(mean)
         print(std)
         input()
@@ -64,8 +64,8 @@ class AFMADEBlock(nn.Module):
         # [batch, nz]
         print('logstd')
         out = logstd
-        mean = out.mean(dim=1)
-        std = out.std(dim=1)
+        mean = out.mean(dim=0)
+        std = out.std(dim=0)
         print(mean)
         print(std)
         input()
@@ -73,12 +73,12 @@ class AFMADEBlock(nn.Module):
         # [batch, nz]
         print('std')
         out = logstd.exp()
-        mean = out.mean(dim=1)
-        std = out.std(dim=1)
+        mean = out.mean(dim=0)
+        std = out.std(dim=0)
         print(mean)
         print(std)
         input()
-        
+
         x = mu + y * logstd.exp()
         return x, logstd.sum(dim=1)
 
