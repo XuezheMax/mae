@@ -78,7 +78,7 @@ class GaussianEncoder(Encoder):
         core = self.core if isinstance(self.core, EncoderCore) else self.core.module
         assert isinstance(core, EncoderCore)
         # [batch, z_shape]
-        mu, logvar = core.initialize(x, init_scale=1.0)
+        mu, logvar = core.initialize(x, init_scale=init_scale)
 
         # print("mu")
         # out = mu
@@ -105,7 +105,7 @@ class GaussianEncoder(Encoder):
         # initialize posterior
         if self.posterior_flow is not None:
             # [batch * nsamples, flow_shape]
-            z, logdet = self.posterior_flow.forward(mu.view(mu.size(0), *self.posterior_flow.input_size()), init=True, init_scale=init_scale)
+            z, logdet = self.posterior_flow.forward(mu.view(mu.size(0), *self.posterior_flow.input_size()), init=True, init_scale=init_scale * 0.1)
         else:
             z = mu
         # initialize prior
