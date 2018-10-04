@@ -77,7 +77,6 @@ class MaskedLinear(nn.Module):
         self._init = True
 
     def reset_parameters(self):
-        # nn.init.xavier_uniform_(self.weight_v, gain=1.0)
         nn.init.normal_(self.weight_v, mean=0.0, std=0.05)
         self.weight_v.data.mul_(self.mask)
         _norm = norm(self.weight_v, 0).data + 1e-8
@@ -120,7 +119,7 @@ class MaskedConv2d(nn.Module):
 
     def __init__(self, in_channels, out_channels, kernel_size,
                  mask_type='A', order='A', masked_channels=None,
-                 stride=1, padding=0, dilation=1, groups=1, bias=True, init_gain=1.0):
+                 stride=1, padding=0, dilation=1, groups=1, bias=True):
         super(MaskedConv2d, self).__init__()
         assert mask_type in {'A', 'B'}
         assert order in {'A', 'B'}
@@ -165,10 +164,9 @@ class MaskedConv2d(nn.Module):
             reverse_mask = reverse_mask[:, :, :, ::-1]
             mask = reverse_mask.copy()
         self.mask.copy_(torch.from_numpy(mask).float())
-        self.reset_parameters(init_gain=init_gain)
+        self.reset_parameters()
 
-    def reset_parameters(self, init_gain):
-        # nn.init.xavier_normal_(self.weight_v, gain=init_gain)
+    def reset_parameters(self):
         nn.init.normal_(self.weight_v, mean=0.0, std=0.05)
         self.weight_v.data.mul_(self.mask)
         _norm = norm(self.weight_v, 0).data + 1e-8

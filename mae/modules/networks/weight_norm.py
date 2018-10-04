@@ -12,7 +12,6 @@ class LinearWeightNorm(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        # nn.init.xavier_uniform_(self.linear.weight)
         nn.init.normal_(self.linear.weight, mean=0.0, std=0.05)
         if self.linear.bias is not None:
             nn.init.constant_(self.linear.bias, 0)
@@ -54,7 +53,6 @@ class Conv2dWeightNorm(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        # nn.init.xavier_normal_(self.conv.weight)
         nn.init.normal_(self.conv.weight, mean=0.0, std=0.05)
         if self.conv.bias is not None:
             nn.init.constant_(self.conv.bias, 0)
@@ -98,7 +96,6 @@ class ConvTranspose2dWeightNorm(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        # nn.init.xavier_normal_(self.deconv.weight)
         nn.init.normal_(self.deconv.weight, mean=0.0, std=0.05)
         if self.deconv.bias is not None:
             nn.init.constant_(self.deconv.bias, 0)

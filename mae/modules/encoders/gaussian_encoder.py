@@ -84,7 +84,7 @@ class GaussianEncoder(Encoder):
         if self.posterior_flow is not None:
             # [batch, flow_shape]
             z = mu.view(mu.size(0), *self.posterior_flow.input_size())
-            z, logdet = self.posterior_flow.forward(z, init=True, init_scale=init_scale * 0.1)
+            z, logdet = self.posterior_flow.forward(z, init=True, init_scale=init_scale * 0.01)
             # [batch, z_shape]
             z = z.view(mu.size())
         else:
@@ -93,7 +93,7 @@ class GaussianEncoder(Encoder):
         if self.prior_flow is not None:
             # [batch, flow_shape]
             z_reshape = z.view(mu.size(0), *self.prior_flow.input_size())
-            # self.prior_flow.backward(z_reshape, init=True, init_scale=init_scale * 0.1)
+            self.prior_flow.backward(z_reshape, init=True, init_scale=init_scale * 0.01)
         return z
 
     @overrides
