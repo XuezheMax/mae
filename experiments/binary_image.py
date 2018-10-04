@@ -94,7 +94,7 @@ params = json.load(open(args.config, 'r'))
 json.dump(params, open(os.path.join(model_path, 'config.json'), 'w'), indent=2)
 mae = MAE.from_params(params).to(device)
 # initialize
-init_batch_size = 1024
+init_batch_size = 1000
 init_index = np.random.choice(train_index, init_batch_size, replace=False)
 init_data, _ = get_batch(train_data, init_index)
 init_data = binarize_image(init_data).to(device)
@@ -116,7 +116,8 @@ patient = 0
 
 
 def train(epoch):
-    print('Epoch: %d (lr=%.6f, patient=%d)' % (epoch, lr, patient))
+    real_free_bits = free_bits if epoch > 10 else free_bits / 10.0 * (epoch - 1)
+    print('Epoch: %d (lr=%.6f, free_bits=%.1f, patient=%d)' % (epoch, lr, real_free_bits, patient))
     mae.train()
     recon_loss = 0
     kl_loss = 0
@@ -133,7 +134,7 @@ def train(epoch):
 
         batch_size = len(binary_data)
         optimizer.zero_grad()
-        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binary_data, nsamples=training_k, eta=eta, gamma=gamma, free_bits=free_bits)
+        loss, recon, kl, pkl_m, pkl_s, loss_pkl_mean, loss_pkl_std = mae.loss(binary_data, nsamples=training_k, eta=eta, gamma=gamma, free_bits=real_free_bits)
         loss.backward()
         clip_grad_norm_(mae.parameters(), 5.0)
         optimizer.step()
