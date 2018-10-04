@@ -116,7 +116,6 @@ patient = 0
 
 
 def train(epoch):
-    real_free_bits = free_bits if epoch > 10 else 0.0
     print('Epoch: %d (lr=%.6f, free_bits=%.1f, patient=%d)' % (epoch, lr, real_free_bits, patient))
     mae.train()
     recon_loss = 0
@@ -274,9 +273,11 @@ best_pkl_mean_loss = 1e12
 best_pkl_std = 1e12
 best_pkl_std_loss = 1e12
 
+real_free_bits = 0.0
 for epoch in range(1, args.epochs + 1):
     train(epoch)
     lr = scheduler.get_lr()[0]
+    real_free_bits = min(free_bits, real_free_bits + 0.1)
     print('----------------------------------------------------------------------------------------------------------------------------')
     with torch.no_grad():
         loss, recon, kl, pkl_mean, pkl_std, pkl_mean_loss, pkl_std_loss = eval(val_binary_data, val_binary_index)
