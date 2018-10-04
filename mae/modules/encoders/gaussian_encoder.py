@@ -91,6 +91,17 @@ class GaussianEncoder(Encoder):
         print(std)
         input()
 
+        print("logvar")
+        out = logvar
+        n_channels = out.size(1)
+        out = out.transpose(0, 1).contiguous().view(n_channels, -1)
+        # [n_channels]
+        mean = out.mean(dim=1)
+        std = out.std(dim=1)
+        print(mean)
+        print(std)
+        input()
+
         print("var")
         out = logvar.exp()
         n_channels = out.size(1)

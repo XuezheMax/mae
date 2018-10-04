@@ -39,7 +39,8 @@ class DenseNetEncoderCoreColorImage32x32(EncoderCore):
             nn.ELU(),
             # state [96, 8, 8]
         )
-        self.output = Conv2dWeightNorm(96, 2 * self.z_channels, 1, 1, bias=True)
+        self.mu = Conv2dWeightNorm(96, self.z_channels, 1, 1, bias=True)
+        self.logvar = Conv2dWeightNorm(96, self.z_channels, 1, 1, bias=True)
         # [2 * z_channels, 8, 8]
 
     @overrides
@@ -50,17 +51,20 @@ class DenseNetEncoderCoreColorImage32x32(EncoderCore):
                 output = layer(output)
             else:
                 output = layer.initialize(output, init_scale=init_scale)
-        output = self.output.initialize(output, init_scale=init_scale)
+        mu = self.mu.initialize(output, init_scale=init_scale)
+        logvar = self.logvar.initialize(output, init_scale=init_scale * 0.1)
         # [batch, z_channels, 8, 8]
-        mu, logvar = output.chunk(2, 1)
+        # mu, logvar = output.chunk(2, 1)
         return mu, F.hardtanh(logvar, min_val=-7, max_val=7.)
 
     def forward(self, input):
         # [batch, 192, 8, 8]
         output = self.main(input)
         # [batch, z_channels, 8, 8]
-        output = self.output(output)
-        mu, logvar = output.chunk(2, 1)
+        # output = self.output(output)
+        # mu, logvar = output.chunk(2, 1)
+        mu = self.mu(output)
+        logvar = self.logvar(output)
         return mu, F.hardtanh(logvar, min_val=-7, max_val=7.)
 
     @overrides
