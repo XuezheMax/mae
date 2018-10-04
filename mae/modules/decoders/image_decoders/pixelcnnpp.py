@@ -42,7 +42,6 @@ class _PixelCNNPPCore(nn.Module):
         h = self.z_transform(z)
         return self.output(self.core(x, h=h))
 
-    @overrides
     def initialize(self, x, z, init_scale=1.0):
         h = z
         for layer in self.z_transform:
