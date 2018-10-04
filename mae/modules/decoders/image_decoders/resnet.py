@@ -19,7 +19,7 @@ class ResnetDecoderBinaryImage28x28(BinaryImageDecoder):
         super(ResnetDecoderBinaryImage28x28, self).__init__(nz, ngpu=ngpu)
         self.nc = 1
         self.core = nn.Sequential(
-            ConvTranspose2dWeightNorm(nz, 64, 4, 1, 0, bias=False),
+            ConvTranspose2dWeightNorm(nz, 64, 4, 1, 0, bias=True),
             nn.ELU(),
             DeResNet(64, [64, 32, self.nc], [2, 2, 2], [0, 1, 1]),
             nn.Sigmoid(),
@@ -30,6 +30,15 @@ class ResnetDecoderBinaryImage28x28(BinaryImageDecoder):
 
     def forward(self, z):
         return self.core(z)
+
+    @overrides
+    def initialize(self, x, z, init_scale=1.0):
+        core = self.core.module if isinstance(self.core, nn.DataParallel) else self.core
+        assert len(core) == 4
+        out = core[0].initialize(z, init_scale=init_scale)
+        out = core[1](out)
+        out = core[2].initialize(out, init_scale=init_scale)
+        return core[3](out)
 
     @overrides
     def output_size(self) -> Tuple:
@@ -58,22 +67,22 @@ class ResnetDecoderColorImage32x32(ColorImageDecoder):
         self.W = 8
 
         self.core = nn.Sequential(
-            ConvTranspose2dWeightNorm(self.z_channels, 96, 1, 1, 0, bias=False),
+            ConvTranspose2dWeightNorm(self.z_channels, 96, 1, 1, 0, bias=True),
             nn.ELU(),
             # state [b, 96, 8, 8]
             DeResNet(96, [96, 96, 96], [1, 1, 1], [0, 0, 0]),
             # state [96, 8, 8]
-            ConvTranspose2dWeightNorm(96, 96, 3, 2, 1, 1, bias=False),
+            ConvTranspose2dWeightNorm(96, 96, 3, 2, 1, 1, bias=True),
             nn.ELU(),
             # state [96, 16, 16]
             DeResNet(96, [96, 96], [1, 1], [0, 0]),
             # state [96, 16, 16]
-            ConvTranspose2dWeightNorm(96, 48, 3, 2, 1, 1, bias=False),
+            ConvTranspose2dWeightNorm(96, 48, 3, 2, 1, 1, bias=True),
             nn.ELU(),
             # state [48, 32, 32]
             DeResNet(48, [48, 48], [1, 1], [0, 0]),
             # state [48, 32, 32]
-            Conv2dWeightNorm(48, (self.nc * 3 + 1) * self.nmix, 1, bias=False)
+            Conv2dWeightNorm(48, (self.nc * 3 + 1) * self.nmix, 1, bias=True)
             # state [(nc * 3 + 1) * nmix, 32, 32]
         )
 
@@ -95,6 +104,17 @@ class ResnetDecoderColorImage32x32(ColorImageDecoder):
 
     def forward(self, x, z):
         return self.core(z)
+
+    @overrides
+    def initialize(self, x, z, init_scale=1.0):
+        core = self.core.module if isinstance(self.core, nn.DataParallel) else self.core
+        output = z
+        for layer in core:
+            if isinstance(layer, nn.ELU):
+                output = layer(output)
+            else:
+                output = layer.initialize(output, init_scale=init_scale)
+        return output
 
     @classmethod
     def from_params(cls, params: Dict) -> "ResnetDecoderColorImage32x32":

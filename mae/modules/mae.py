@@ -173,7 +173,8 @@ class MAE(nn.Module):
 
         """
         z = self.encoder.initialize(x, init_scale=init_scale)
-        return self.decoder.initialize(z, init_scale=init_scale)
+        z_shape_dec = self.decoder.z_shape()
+        return self.decoder.initialize(x, z.view(z.size(0), *z_shape_dec), init_scale=init_scale)
 
     def nll(self, x, k):
         """

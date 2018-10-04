@@ -65,17 +65,17 @@ class ResnetEncoderCoreColorImage32x32(EncoderCore):
         self.main = nn.Sequential(
             ResNet(self.nc, [48, 48], [1, 1]),
             # state [48, 32, 32]
-            Conv2dWeightNorm(48, 96, 3, 2, 1, bias=False),
+            Conv2dWeightNorm(48, 96, 3, 2, 1, bias=True),
             nn.ELU(),
             # state [96, 16, 16]
             ResNet(96, [96, 96], [1, 1]),
             # state [96, 16, 16]
-            Conv2dWeightNorm(96, 96, 3, 2, 1, bias=False),
+            Conv2dWeightNorm(96, 96, 3, 2, 1, bias=True),
             nn.ELU(),
             # state [96, 8, 8]
             ResNet(96, [96, 96, 96], [1, 1, 1]),
             # state [96, 8, 8]
-            Conv2dWeightNorm(96, 48, 1, 1, bias=False),
+            Conv2dWeightNorm(96, 48, 1, 1, bias=True),
             nn.ELU(),
             # state [48, 8, 8]
             Conv2dWeightNorm(48, 2 * self.z_channels, 1, 1, bias=True)

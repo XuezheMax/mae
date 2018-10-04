@@ -15,10 +15,10 @@ class _PixelCNNPPCore(nn.Module):
         super(_PixelCNNPPCore, self).__init__()
         self.z_transform = nn.Sequential(
             # state [b, z_channels, 8, 8]
-            ConvTranspose2dWeightNorm(z_channels, z_channels // 2, 3, 2, 1, 1, bias=False),
+            ConvTranspose2dWeightNorm(z_channels, z_channels // 2, 3, 2, 1, 1, bias=True),
             nn.ELU(),
             # state [b, z_channels / 2, 16, 16]
-            ConvTranspose2dWeightNorm(z_channels // 2, z_channels // 4, 3, 2, 1, 1, bias=False),
+            ConvTranspose2dWeightNorm(z_channels // 2, z_channels // 4, 3, 2, 1, 1, bias=True),
             nn.ELU(),
             # state [b, z_channels / 4, 32, 32]
             Conv2dWeightNorm(z_channels // 4, h_channels, 1),
@@ -31,16 +31,30 @@ class _PixelCNNPPCore(nn.Module):
         self.output = nn.Sequential(
             nn.ELU(),
             # state [hidden_channels, 32, 32]
-            Conv2dWeightNorm(hidden_channels, hidden_channels, 1, bias=False),
+            Conv2dWeightNorm(hidden_channels, hidden_channels, 1, bias=True),
             nn.ELU(),
             # state [hidden_channels * 2, 32, 32]
-            Conv2dWeightNorm(hidden_channels, (nc * 3 + 1) * nmix, 1, bias=False)
+            Conv2dWeightNorm(hidden_channels, (nc * 3 + 1) * nmix, 1, bias=True)
             # state [10 * nmix, 32, 32]
         )
 
     def forward(self, x, z):
         h = self.z_transform(z)
         return self.output(self.core(x, h=h))
+
+    @overrides
+    def initialize(self, x, z, init_scale=1.0):
+        h = z
+        for layer in self.z_transform:
+            if isinstance(layer, nn.ELU):
+                h = layer(h)
+            else:
+                h = layer.initialize(h, init_scale=init_scale)
+        output = self.core.initialize(x, h=h, init_scale=init_scale)
+        assert len(self.output) == 4
+        output = self.output[1].initialize(self.output[0](output), init_scale=init_scale)
+        output = self.output[3].initialize(self.output[2](output), init_scale=init_scale)
+        return output
 
 
 class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
@@ -109,6 +123,12 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
 
     def forward(self, x, z):
         return self.core(x, z)
+
+    @overrides
+    def initialize(self, x, z, init_scale=1.0):
+        core = self.core.module if isinstance(self.core, nn.DataParallel) else self.core
+        assert isinstance(core, _PixelCNNPPCore)
+        return core.initialize(x, z, init_scale=init_scale)
 
     @classmethod
     def from_params(cls, params: Dict) -> "PixelCNNPPDecoderColorImage32x32":

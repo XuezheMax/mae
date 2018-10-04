@@ -25,17 +25,17 @@ class DenseNetEncoderCoreColorImage32x32(EncoderCore):
         self.main = nn.Sequential(
             DenseNet(self.nc, 15, 3),
             # state [48, 32, 32]
-            Conv2dWeightNorm(48, 48, 3, 2, 1, bias=False),
+            Conv2dWeightNorm(48, 48, 3, 2, 1, bias=True),
             nn.ELU(),
             # state [48, 16, 16]
             DenseNet(48, 16, 3),
             # state [96, 16, 16]
-            Conv2dWeightNorm(96, 96, 3, 2, 1, bias=False),
+            Conv2dWeightNorm(96, 96, 3, 2, 1, bias=True),
             nn.ELU(),
             # state [96, 8, 8]
             DenseNet(96, 16, 6),
             # state [192, 8, 8]
-            Conv2dWeightNorm(192, 96, 1, 1, bias=False),
+            Conv2dWeightNorm(192, 96, 1, 1, bias=True),
             nn.ELU(),
             # state [96, 8, 8]
             Conv2dWeightNorm(96, 2 * self.z_channels, 1, 1, bias=True)
