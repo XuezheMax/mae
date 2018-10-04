@@ -46,6 +46,17 @@ class DenseNet(nn.Module):
         for i, block in enumerate(self.main):
             if i % 2 == 0:
                 x = block.initialize(x, init_scale=init_scale)
+
+                print("dense block%d" % i)
+                out = x
+                n_channels = out.size(1)
+                out = out.transpose(0, 1).contiguous().view(n_channels, -1)
+                # [n_channels]
+                mean = out.mean(dim=1)
+                std = out.std(dim=1)
+                print(mean)
+                print(std)
+                input()
             else:
                 x = block(x)
         return x

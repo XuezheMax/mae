@@ -82,9 +82,14 @@ json.dump(params, open(os.path.join(model_path, 'config.json'), 'w'), indent=2)
 mae = MAE.from_params(params).to(device)
 # initialize
 init_batch_size = 64
-data_init, _ = get_batch(train_data, np.random.choice(train_index, init_batch_size, replace=False))
-data_init = data_init.to(device)
-mae.initialize(data_init, init_scale=1.0)
+init_index = np.random.choice(train_index, init_batch_size, replace=False)
+init_data, _ = get_batch(train_data, init_index)
+init_data = init_data.to(device)
+mae.eval()
+mae.initialize(init_data, init_scale=1.0)
+print('init loss')
+print(mae.loss(init_data, nsamples=test_k, eta=eta, gamma=gamma)[0])
+input()
 # create shadow mae for ema
 params = json.load(open(args.config, 'r'))
 mae_shadow = MAE.from_params(params).to(device)

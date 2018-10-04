@@ -50,6 +50,17 @@ class DenseNetEncoderCoreColorImage32x32(EncoderCore):
                 output = layer(output)
             else:
                 output = layer.initialize(output, init_scale=init_scale)
+
+                print("dense layer")
+                out = output
+                n_channels = out.size(1)
+                out = out.transpose(0, 1).contiguous().view(n_channels, -1)
+                # [n_channels]
+                mean = out.mean(dim=1)
+                std = out.std(dim=1)
+                print(mean)
+                print(std)
+                input()
         # [batch, z_channels, 8, 8]
         mu, logvar = output.chunk(2, 1)
         return mu, F.hardtanh(logvar, min_val=-7, max_val=7.)
