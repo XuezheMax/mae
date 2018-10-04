@@ -20,6 +20,16 @@ class IAFMADEBlock(nn.Module):
         assert input_size > 0, 'input size (%s) should be positive' % input_size
         self._input_size = input_size
 
+    def initialize(self, x, init_scale=1.0):
+        # [batch, nz]
+        mu = self.mu.initialize(x, init_scale=init_scale)
+        if self.logvar:
+            logstd = self.logvar.initialize(x, init_scale=init_scale) * 0.5
+        else:
+            logstd = mu.new_zeros(mu.size())
+        y = mu + x * logstd.exp()
+        return y, logstd.sum(dim=1) * -1.0
+
     def forward(self, x):
         # [batch, nz]
         mu = self.mu(x)
@@ -47,6 +57,14 @@ class IAFMADEDualBlock(nn.Module):
         super(IAFMADEDualBlock, self).__init__()
         self.fwd = IAFMADEBlock(input_size, num_hiddens, hidden_size, 'A', bias=bias, var=var)
         self.bwd = IAFMADEBlock(input_size, num_hiddens, hidden_size, 'B', bias=bias, var=var)
+
+    def initialize(self, x, init_scale=1.0):
+        # forward
+        # [batch, nz]
+        x, logdet_fwd = self.fwd.initialize(x, init_scale=init_scale)
+        # backward
+        y, logdet_bwd = self.bwd.initialize(x, init_scale=init_scale)
+        return y, logdet_fwd + logdet_bwd
 
     def forward(self, x):
         # forward
@@ -78,15 +96,16 @@ class IAFMADE(IAF):
         self.blocks = nn.ModuleList(self.blocks)
 
     @overrides
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor, init=False, init_scale=1.0) -> Tuple[torch.Tensor, torch.Tensor]:
         logdet_accum = x.new_zeros(x.size(0))
         for block in self.blocks:
-            x, logdet = block.forward(x)
+            x, logdet = block.initialize(x, init_scale=init_scale) if init else block.forward(x)
             logdet_accum = logdet_accum + logdet
         return x, logdet_accum
 
     @overrides
-    def backward(self, y: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def backward(self, y: torch.Tensor, init=False, init_scale=1.0) -> Tuple[torch.Tensor, torch.Tensor]:
+        assert not init, 'IAF does not support initialization via backward.'
         logdet_accum = y.new_zeros(y.size(0))
         for block in reversed(self.blocks):
             y, logdet = block.backward(y)

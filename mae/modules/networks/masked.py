@@ -77,12 +77,27 @@ class MaskedLinear(nn.Module):
         self._init = True
 
     def reset_parameters(self):
-        nn.init.xavier_uniform_(self.weight_v, gain=0.1)
+        nn.init.normal_(self.weight_v, mean=0.0, std=0.05)
         self.weight_v.data.mul_(self.mask)
         _norm = norm(self.weight_v, 0).data + 1e-8
         self.weight_g.data.copy_(_norm.log())
         if self.bias is not None:
             nn.init.constant_(self.bias, 0.)
+
+    def initialize(self, x, init_scale=1.0):
+        with torch.no_grad():
+            # [batch, out_features]
+            out = self(x)
+            # [out_features]
+            mean = out.mean(dim=0)
+            std = out.std(dim=0)
+            std = std + std.le(0).float()
+            inv_stdv = init_scale / (std + 1e-6)
+
+            self.weight_g.add_(inv_stdv.log().unsqueeze(1))
+            if self.bias is not None:
+                self.bias.add_(-mean).mul_(inv_stdv)
+            return self(x)
 
     def forward(self, input):
         self.weight_v.data.mul_(self.mask)
@@ -105,7 +120,7 @@ class MaskedConv2d(nn.Module):
 
     def __init__(self, in_channels, out_channels, kernel_size,
                  mask_type='A', order='A', masked_channels=None,
-                 stride=1, padding=0, dilation=1, groups=1, bias=True, init_gain=1.0):
+                 stride=1, padding=0, dilation=1, groups=1, bias=True):
         super(MaskedConv2d, self).__init__()
         assert mask_type in {'A', 'B'}
         assert order in {'A', 'B'}
@@ -150,15 +165,30 @@ class MaskedConv2d(nn.Module):
             reverse_mask = reverse_mask[:, :, :, ::-1]
             mask = reverse_mask.copy()
         self.mask.copy_(torch.from_numpy(mask).float())
-        self.reset_parameters(init_gain=init_gain)
+        self.reset_parameters()
 
-    def reset_parameters(self, init_gain):
-        nn.init.xavier_normal_(self.weight_v, gain=init_gain)
+    def reset_parameters(self):
+        nn.init.normal_(self.weight_v, mean=0.0, std=0.05)
         self.weight_v.data.mul_(self.mask)
         _norm = norm(self.weight_v, 0).data + 1e-8
         self.weight_g.data.copy_(_norm.log())
         if self.bias is not None:
             nn.init.constant_(self.bias, 0)
+
+    def initialize(self, x, init_scale=1.0):
+        with torch.no_grad():
+            # [batch, n_channels, H, W]
+            out = self(x)
+            n_channels = out.size(1)
+            out = out.transpose(0, 1).contiguous().view(n_channels, -1)
+            # [n_channels]
+            mean = out.mean(dim=1)
+            std = out.std(dim=1)
+            inv_stdv = init_scale / (std + 1e-6)
+            self.weight_g.add_(inv_stdv.log().view(n_channels, 1, 1, 1))
+            if self.bias is not None:
+                self.bias.add_(-mean).mul_(inv_stdv)
+            return self(x)
 
     def forward(self, input):
         self.weight_v.data.mul_(self.mask)

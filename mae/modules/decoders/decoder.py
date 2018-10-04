@@ -29,6 +29,22 @@ class Decoder(nn.Module):
         """
         raise NotImplementedError
 
+    def initialize(self, x, z, init_scale=1.0):
+        """
+
+        Args:
+            x: Tensor
+                The input data used for initialization, shape [batch, x_shape]
+            z: Tensor
+                The input latent code used for initialization, shape = [batch, z_shape]
+            init_scale: float
+                initial scale
+        Returns: Tensor
+            the tensor of output
+
+        """
+        raise NotImplementedError
+
     def decode(self, z, random_sample):
         """
         Args:

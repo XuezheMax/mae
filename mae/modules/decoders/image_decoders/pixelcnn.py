@@ -46,9 +46,9 @@ class PixelCNNDecoderBinaryImage28x28(BinaryImageDecoder):
         hidden_channels = 64
         self.core = nn.Sequential(
             PixelCNN(self.nc + self.fm_latent, hidden_channels, len(kernal_sizes), kernal_sizes, self.nc),
-            Conv2dWeightNorm(hidden_channels, hidden_channels, 1, bias=False),
+            Conv2dWeightNorm(hidden_channels, hidden_channels, 1, bias=True),
             nn.ELU(),
-            Conv2dWeightNorm(hidden_channels, self.nc, 1, bias=False),
+            Conv2dWeightNorm(hidden_channels, self.nc, 1, bias=True),
             nn.Sigmoid(),
         )
 
@@ -137,6 +137,23 @@ class PixelCNNDecoderBinaryImage28x28(BinaryImageDecoder):
         BCE = (recon_x + eps).log() * x_flat.unsqueeze(1) + (1.0 - recon_x + eps).log() * (1. - x_flat).unsqueeze(1)
         # [batch, nsamples]
         return BCE.sum(dim=2) * -1.0
+
+    @overrides
+    def initialize(self, x, z, init_scale=1.0):
+        z_transform = self.z_transform.module if isinstance(self.z_transform, nn.DataParallel) else self.z_transform
+        core = self.core.module if isinstance(self.core, nn.DataParallel) else self.core
+        assert len(z_transform) == 3
+        assert len(core) == 5
+
+        z = z_transform[0].initialize(z, init_scale=init_scale)
+        z = z_transform[2](z_transform[1](z))
+
+        img = torch.cat([x, z], dim=1)
+        img = core[0].initialize(img, init_scale=init_scale)
+        img = core[1].initialize(img, init_scale=init_scale)
+        img = core[2](img)
+        img = core[3].initialize(img, init_scale=init_scale)
+        return core[4](img)
 
     @classmethod
     def from_params(cls, params: Dict) -> "PixelCNNDecoderBinaryImage28x28":

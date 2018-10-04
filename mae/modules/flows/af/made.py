@@ -44,6 +44,16 @@ class AFMADEBlock(nn.Module):
         x = mu + y * logstd.exp()
         return x, logstd.sum(dim=1)
 
+    def initialize(self, y, init_scale=1.0):
+        # [batch, nz]
+        mu = self.mu.initialize(y, init_scale=init_scale)
+        if self.logvar:
+            logstd = self.logvar.initialize(y, init_scale=init_scale) * 0.5
+        else:
+            logstd = mu.new_zeros(mu.size())
+        x = mu + y * logstd.exp()
+        return x, logstd.sum(dim=1)
+
 
 class AFMADEDualBlock(nn.Module):
     def __init__(self, input_size, num_hiddens, hidden_size, bias=True, var=True):
@@ -65,6 +75,14 @@ class AFMADEDualBlock(nn.Module):
         x, logdet_fwd = self.fwd.backward(y)
         return x, logdet_fwd + logdet_bwd
 
+    def initialize(self, y, init_scale=1.0):
+        # backward
+        # [batch, nz]
+        y, logdet_bwd = self.bwd.initialize(y, init_scale=init_scale)
+        # [batch, nz]
+        x, logdet_fwd = self.fwd.initialize(y, init_scale=init_scale)
+        return x, logdet_fwd + logdet_bwd
+
 
 class AFMADE(AF):
     def __init__(self, input_size, num_blocks, num_hiddens=1, hidden_size=None, bias=True, var=True):
@@ -81,7 +99,8 @@ class AFMADE(AF):
         self.blocks = nn.ModuleList(self.blocks)
 
     @overrides
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor, init=False, init_scale=1.0) -> Tuple[torch.Tensor, torch.Tensor]:
+        assert not init, 'AF does not support initialization via forward.'
         logdet_accum = x.new_zeros(x.size(0))
         for block in reversed(self.blocks):
             x, logdet = block.forward(x)
@@ -89,10 +108,10 @@ class AFMADE(AF):
         return x, logdet_accum
 
     @overrides
-    def backward(self, y: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def backward(self, y: torch.Tensor, init=False, init_scale=1.0) -> Tuple[torch.Tensor, torch.Tensor]:
         logdet_accum = y.new_zeros(y.size(0))
         for block in self.blocks:
-            y, logdet = block.backward(y)
+            y, logdet = block.initialize(y, init_scale=init_scale) if init else block.backward(y)
             logdet_accum = logdet_accum + logdet
         return y, logdet_accum
 
