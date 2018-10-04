@@ -33,7 +33,8 @@ class ResnetEncoderCoreBinaryImage28x28(EncoderCore):
         assert len(self.main) == 3
         output = self.main[0].initialize(x, init_scale=init_scale)
         output = self.main[1].initialize(output, init_scale=init_scale)
-        output = self.linear.initialize(self.main[2](output), init_scale=init_scale)
+        output = self.main[2](output).view(output.size()[:2])
+        output = self.linear.initialize(output, init_scale=init_scale)
         return output.chunk(2, 1)
 
     def forward(self, input):
