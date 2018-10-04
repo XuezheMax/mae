@@ -91,8 +91,8 @@ class GaussianEncoder(Encoder):
         print(std)
         input()
 
-        print("logvar")
-        out = logvar
+        print("var")
+        out = logvar.exp()
         n_channels = out.size(1)
         out = out.transpose(0, 1).contiguous().view(n_channels, -1)
         # [n_channels]
