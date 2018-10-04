@@ -115,13 +115,18 @@ class GaussianEncoder(Encoder):
 
         # initialize posterior
         if self.posterior_flow is not None:
-            # [batch * nsamples, flow_shape]
-            z, logdet = self.posterior_flow.forward(mu.view(mu.size(0), *self.posterior_flow.input_size()), init=True, init_scale=init_scale * 0.1)
+            # [batch, flow_shape]
+            z = mu.view(mu.size(0), *self.posterior_flow.input_size())
+            z, logdet = self.posterior_flow.forward(z, init=True, init_scale=init_scale * 0.1)
+            # [batch, z_shape]
+            z = z.view(mu.size())
         else:
             z = mu
         # initialize prior
         if self.prior_flow is not None:
-            self.prior_flow.backward(z, init=True, init_scale=init_scale * 0.1)
+            # [batch, flow_shape]
+            z_reshape = z.view(mu.size(0), *self.prior_flow.input_size())
+            self.prior_flow.backward(z_reshape, init=True, init_scale=init_scale * 0.1)
         return z
 
     @overrides
@@ -148,7 +153,7 @@ class GaussianEncoder(Encoder):
             # [batch * nsamples, flow_shape]
             z, logdet = self.posterior_flow.forward(z_normal.view(z_size[0] * z_size[1], *self.posterior_flow.input_size()))
             # [batch, nsamples, z_shape]
-            z = z.view(*z_size)
+            z = z.view(z_size)
             logdet = logdet.view(z_size[0], z_size[1])
         else:
             z = z_normal
@@ -277,8 +282,10 @@ class GaussianEncoder(Encoder):
                 z_normal = z
                 logdet = 0.
             else:
+                # [batch, z_shape] --> [batch, flow_shape]
+                z = z.view(z.size(0), *self.prior_flow.input_size())
                 z_normal, logdet = self.prior_flow.backward(z)
-        # [batch, z_shape]
+        # [batch, z_shape] or [batch, flow_shape]
         log_probs = z_normal.pow(2) + math.log(math.pi * 2.)
         # [batch, z_shape] --> [batch, nz] -- > [batch]
         log_probs = log_probs.view(z.size(0), -1).sum(dim=1) * -0.5 + logdet
@@ -302,14 +309,20 @@ class GaussianEncoder(Encoder):
 
         '''
         eps = 1e-12
+        # [batch, nsamples, z_shape]
         z_size = z.size()
         if distr_params is None:
+            # [batch, z_shape]
             mu, logvar = self.core(x)
             if self.posterior_flow is None:
                 z_normal = z
                 logdet = z.new_zeros(z_size[0], z_size[1])
             else:
-                z_normal, logdet = self.posterior_flow.backward(z)
+                # [batch * nsamples, flow_shape], [batch * nsamples]
+                z_normal, logdet = self.posterior_flow.backward(z.view(z_size[0] * z_size[1], *self.posterior_flow.input_size()))
+                # [batch, nsamples, flow_shape], [batch, nsamples]
+                z_normal = z_normal.view(z_size)
+                logdet = logdet.view(z_size[0], z_size[1])
         else:
             mu, logvar, z_normal, logdet = distr_params
 
