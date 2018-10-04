@@ -29,7 +29,7 @@ class LinearWeightNorm(nn.Module):
             # [out_features]
             mean = out.mean(dim=0)
             std = out.std(dim=0)
-            inv_stdv = init_scale / (std + 1e-10)
+            inv_stdv = init_scale / (std + 1e-6)
 
             self.linear.weight_g.mul_(inv_stdv.unsqueeze(1))
             if self.linear.bias is not None:
@@ -67,7 +67,7 @@ class Conv2dWeightNorm(nn.Module):
             # [n_channels]
             mean = out.mean(dim=1)
             std = out.std(dim=1)
-            inv_stdv = init_scale / (std + 1e-10)
+            inv_stdv = init_scale / (std + 1e-6)
 
             self.conv.weight_g.mul_(inv_stdv.view(n_channels, 1, 1, 1))
             if self.conv.bias is not None:
@@ -113,7 +113,7 @@ class ConvTranspose2dWeightNorm(nn.Module):
             # [n_channels]
             mean = out.mean(dim=1)
             std = out.std(dim=1)
-            inv_stdv = init_scale / (std + 1e-10)
+            inv_stdv = init_scale / (std + 1e-6)
 
             self.deconv.weight_g.mul_(inv_stdv.view(1, n_channels, 1, 1))
             if self.deconv.bias is not None:

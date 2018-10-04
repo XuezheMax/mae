@@ -116,12 +116,12 @@ class GaussianEncoder(Encoder):
         # initialize posterior
         if self.posterior_flow is not None:
             # [batch * nsamples, flow_shape]
-            z, logdet = self.posterior_flow.forward(mu.view(mu.size(0), *self.posterior_flow.input_size()), init=True, init_scale=init_scale * 0.05)
+            z, logdet = self.posterior_flow.forward(mu.view(mu.size(0), *self.posterior_flow.input_size()), init=True, init_scale=init_scale * 0.1)
         else:
             z = mu
         # initialize prior
         if self.prior_flow is not None:
-            self.prior_flow.backward(z, init=True, init_scale=init_scale * 0.05)
+            self.prior_flow.backward(z, init=True, init_scale=init_scale * 0.1)
         return z
 
     @overrides

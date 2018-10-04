@@ -91,7 +91,7 @@ class MaskedLinear(nn.Module):
             # [out_features]
             mean = out.mean(dim=0)
             std = out.std(dim=0)
-            inv_stdv = init_scale / (std + 1e-10)
+            inv_stdv = init_scale / (std + 1e-6)
 
             self.weight_g.add_(inv_stdv.log().unsqueeze(1))
             if self.bias is not None:
@@ -183,8 +183,8 @@ class MaskedConv2d(nn.Module):
             # [n_channels]
             mean = out.mean(dim=1)
             std = out.std(dim=1)
-            inv_stdv = init_scale / (std + 1e-10)
-            self.weight_g.add_(inv_stdv.log().view(n_channels, 1, 1, 1))
+            inv_stdv = init_scale / (std + 1e-6)
+            self.weight_g.add_(inv_stdv.log().view(n_channels, 1, 1, 1) / 3.0)
             if self.bias is not None:
                 self.bias.add_(-mean).mul_(inv_stdv)
             return self(x)
