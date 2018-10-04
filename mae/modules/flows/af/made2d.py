@@ -57,39 +57,6 @@ class AF2dMADEBlock(nn.Module):
         else:
             logstd = mu.new_zeros(mu.size())
 
-        print("mu")
-        out = mu
-        n_channels = out.size(1)
-        out = out.transpose(0, 1).contiguous().view(n_channels, -1)
-        # [n_channels]
-        mean = out.mean(dim=1)
-        std = out.std(dim=1)
-        print(mean)
-        print(std)
-        input()
-
-        print("logstd")
-        out = logstd
-        n_channels = out.size(1)
-        out = out.transpose(0, 1).contiguous().view(n_channels, -1)
-        # [n_channels]
-        mean = out.mean(dim=1)
-        std = out.std(dim=1)
-        print(mean)
-        print(std)
-        input()
-
-        print("std")
-        out = logstd.exp()
-        n_channels = out.size(1)
-        out = out.transpose(0, 1).contiguous().view(n_channels, -1)
-        # [n_channels]
-        mean = out.mean(dim=1)
-        std = out.std(dim=1)
-        print(mean)
-        print(std)
-        input()
-
         x = mu + y * logstd.exp()
         return x, logstd.view(mu.size(0), -1).sum(dim=1)
 
