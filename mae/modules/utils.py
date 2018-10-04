@@ -99,7 +99,7 @@ def discretized_mix_logistic_loss(x, means, logscales, coeffs, bin_size, lower, 
     cdf_plus = torch.sigmoid(plus_in)
     # lower < x < upper
     cdf_delta = cdf_plus - cdf_min
-    log_cdf_mid = torch.log(cdf_delta + eps)
+    log_cdf_mid = torch.log(cdf_delta.clamp(min=eps))
     log_cdf_approx = x_in - logscales - 2. * F.softplus(x_in) + np.log(2 * bin_size)
 
     # x < lower
@@ -157,3 +157,15 @@ def sample_from_discretized_mix_logistic(means, logscales, coeffs, logit_probs, 
     x2 = (x[:, 2] + coeffs[:, 1] * x0 + coeffs[:, 2] * x1).clamp(min=-1., max=1.)
     x = torch.stack([x0, x1, x2], dim=1)
     return x
+
+
+def exponentialMovingAverage(original, shadow, decay_rate, init=False):
+    params = dict()
+    for name, param in shadow.named_parameters():
+        params[name] = param
+    for name, param in original.named_parameters():
+        shadow_param = params[name]
+        if init:
+            shadow_param.data.copy_(param.data)
+        else:
+            shadow_param.data.add_((1 - decay_rate) * (param.data - shadow_param.data))
