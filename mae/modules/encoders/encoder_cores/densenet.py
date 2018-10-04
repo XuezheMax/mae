@@ -38,9 +38,9 @@ class DenseNetEncoderCoreColorImage32x32(EncoderCore):
             Conv2dWeightNorm(192, 96, 1, 1, bias=True),
             nn.ELU(),
             # state [96, 8, 8]
-            Conv2dWeightNorm(96, 2 * self.z_channels, 1, 1, bias=True)
-            # [2 * z_channels, 8, 8]
         )
+        self.output = Conv2dWeightNorm(96, 2 * self.z_channels, 1, 1, bias=True)
+        # [2 * z_channels, 8, 8]
 
     @overrides
     def initialize(self, x, init_scale=1.0):
@@ -50,14 +50,16 @@ class DenseNetEncoderCoreColorImage32x32(EncoderCore):
                 output = layer(output)
             else:
                 output = layer.initialize(output, init_scale=init_scale)
+        output = self.output.initialize(output, init_scale=init_scale * 0.1)
         # [batch, z_channels, 8, 8]
         mu, logvar = output.chunk(2, 1)
         return mu, F.hardtanh(logvar, min_val=-7, max_val=7.)
 
     def forward(self, input):
-        # [batch, 2 * z_channels, 8, 8]
+        # [batch, 192, 8, 8]
         output = self.main(input)
         # [batch, z_channels, 8, 8]
+        output = self.output(output)
         mu, logvar = output.chunk(2, 1)
         return mu, F.hardtanh(logvar, min_val=-7, max_val=7.)
 
