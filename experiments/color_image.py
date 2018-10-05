@@ -26,7 +26,7 @@ parser.add_argument('--batch-size', type=int, default=64, metavar='N', help='inp
 parser.add_argument('--epochs', type=int, default=1000, metavar='N', help='number of epochs to train (default: 10)')
 parser.add_argument('--seed', type=int, default=524287, metavar='S', help='random seed (default: 524287)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
-parser.add_argument('--lr', type=float, default=0.001, help='initial learning rate')
+parser.add_argument('--lr', type=float, default=0.002, help='initial learning rate')
 parser.add_argument('--eta', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--gamma', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--free-bits', type=float, default=0.0, metavar='N', help='free bits used in training.')
@@ -96,7 +96,7 @@ print(args)
 lr = args.lr
 betas = (0.9, 0.999)
 eps = 1e-8
-optimizer = optim.Adam(mae.parameters(), lr=lr, betas=betas, eps=eps)
+optimizer = optim.Adamax(mae.parameters(), lr=lr, betas=betas, eps=eps)
 step_decay = 0.999995
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
 lr_min = 0.5e-4
