@@ -299,8 +299,8 @@ for epoch in range(1, args.epochs + 1):
         best_pkl_std = pkl_std
         best_pkl_std_loss = pkl_std_loss
     elif patient >= schedule:
-        # mae.load_state_dict(torch.load(model_name))
-        # mae_shadow.load_state_dict(torch.load(model_name))
+        mae.load_state_dict(torch.load(model_name))
+        mae_shadow.load_state_dict(torch.load(model_name))
         lr = lr * decay_rate
         optimizer = optim.Adam(mae.parameters(), lr=lr)
         scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
