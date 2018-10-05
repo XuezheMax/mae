@@ -30,6 +30,7 @@ parser.add_argument('--eta', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--gamma', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--free-bits', type=float, default=0.0, metavar='N', help='free bits used in training.')
 parser.add_argument('--polyak', type=float, default=0.999, help='Exponential decay rate of the sum of previous model iterates during Polyak averaging')
+parser.add_argument('--schedule', type=int, default=20, help='schedule for learning rate decay')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 
 args = parser.parse_args()
@@ -112,11 +113,15 @@ step_decay = 0.999995
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
 lr_min = 0.5e-4
 
+decay_rate = 0.5
+max_decay = 3
+schedule = args.schedule
+decay = 0
 patient = 0
 
 
 def train(epoch):
-    print('Epoch: %d (lr=%.6f, patient=%d)' % (epoch, lr, patient))
+    print('Epoch: %d (lr=%.6f, patient=%d (%d), decay=%d (%d))' % (epoch, lr, patient, schedule, decay, max_decay))
     mae.train()
     recon_loss = 0
     kl_loss = 0
@@ -293,6 +298,14 @@ for epoch in range(1, args.epochs + 1):
         best_pkl_mean_loss = pkl_mean_loss
         best_pkl_std = pkl_std
         best_pkl_std_loss = pkl_std_loss
+    elif patient >= schedule:
+        # mae.load_state_dict(torch.load(model_name))
+        # mae_shadow.load_state_dict(torch.load(model_name))
+        lr = lr * decay_rate
+        optimizer = optim.Adam(mae.parameters(), lr=lr)
+        scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
+        patient = 0
+        decay +=1
     else:
         patient += 1
 
@@ -302,7 +315,7 @@ for epoch in range(1, args.epochs + 1):
         best_epoch))
     print('============================================================================================================================')
 
-    if lr < lr_min:
+    if lr < lr_min or decay == max_decay:
         break
 
 mae_shadow.load_state_dict(torch.load(model_name))
