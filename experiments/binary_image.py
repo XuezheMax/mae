@@ -53,6 +53,7 @@ free_bits = args.free_bits
 
 model_path = args.model_path
 model_name = os.path.join(model_path, 'model.pt')
+tmp_name = os.path.join(model_path, 'tmp.pt')
 if not os.path.exists(model_path):
     os.makedirs(model_path)
 
@@ -306,6 +307,7 @@ for epoch in range(1, args.epochs + 1):
     elbo = recon + kl
     if elbo < best_elbo:
         patient = 0
+        torch.save(mae.state_dict(), tmp_name)
         torch.save(mae_shadow.state_dict(), model_name)
 
         best_epoch = epoch
@@ -318,6 +320,8 @@ for epoch in range(1, args.epochs + 1):
         best_pkl_std = pkl_std
         best_pkl_std_loss = pkl_std_loss
     elif patient >= schedule:
+        mae.load_state_dict(torch.load(tmp_name))
+        mae_shadow.load_state_dict(torch.load(model_name))
         lr = lr * decay_rate
         optimizer = get_optimizer(lr, mae.parameters())
         scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
