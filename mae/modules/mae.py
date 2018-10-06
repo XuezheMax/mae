@@ -131,7 +131,7 @@ class MAE(nn.Module):
 
         postKL_mean = postKL[0].sum()
         postKL_std = postKL[1]
-        loss_postKL_mean = - eta * F.logsigmoid(postKL[0] / eta).sum() if eta > 0. else 0.
+        loss_postKL_mean = - eta * F.logsigmoid(postKL[0]).sum() if eta > 0. else 0.
         loss_postKL_std = gamma * postKL_std if gamma > 0. else 0.
 
         recon = reconstruct_err.mean(dim=1)
