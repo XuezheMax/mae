@@ -23,13 +23,15 @@ parser = argparse.ArgumentParser(description='MAE Binary Image Example')
 parser.add_argument('--config', type=str, help='config file', required=True)
 parser.add_argument('--data', choices=['mnist', 'omniglot'], help='data set', required=True)
 parser.add_argument('--batch-size', type=int, default=100, metavar='N', help='input batch size for training (default: 128)')
-parser.add_argument('--epochs', type=int, default=500, metavar='N', help='number of epochs to train (default: 10)')
+parser.add_argument('--epochs', type=int, default=1000, metavar='N', help='number of epochs to train (default: 10)')
 parser.add_argument('--seed', type=int, default=524287, metavar='S', help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
+parser.add_argument('--opt', choices=['adam', 'adamax'], help='optimization method', default='adam')
 parser.add_argument('--eta', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--gamma', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--free-bits', type=float, default=0.0, metavar='N', help='free bits used in training.')
-parser.add_argument('--polyak', type=float, default=0.999, help='Exponential decay rate of the sum of previous model iterates during Polyak averaging')
+parser.add_argument('--polyak', type=float, default=0.998, help='Exponential decay rate of the sum of previous model iterates during Polyak averaging')
+parser.add_argument('--schedule', type=int, default=20, help='schedule for learning rate decay')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 
 args = parser.parse_args()
@@ -106,17 +108,39 @@ mae_shadow = MAE.from_params(params).to(device)
 exponentialMovingAverage(mae, mae_shadow, polyak_decay, init=True)
 print(args)
 
-lr = 1e-3
-optimizer = optim.Adam(mae.parameters(), lr=lr)
+
+def get_optimizer(learning_rate, parameters):
+    if opt == 'adam':
+        return optim.Adam(parameters, lr=learning_rate)
+    elif opt == 'adamax':
+        return optim.Adamax(parameters, lr=learning_rate)
+    else:
+        raise ValueError('unknown optimization method: %s' % opt)
+
+
+opt = args.opt
+
+if opt == 'adam':
+    lr = 1e-3
+elif opt == 'adamax':
+    lr = 2e-3
+else:
+    raise ValueError('unknown optimization method: %s' % opt)
+
+optimizer = get_optimizer(lr, mae.parameters())
 step_decay = 0.999995
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
-lr_min = 0.5e-4
+lr_min = lr / 20
 
+decay_rate = 0.5
+max_decay = 3
+schedule = args.schedule
+decay = 0
 patient = 0
 
 
 def train(epoch):
-    print('Epoch: %d (lr=%.6f, patient=%d)' % (epoch, lr, patient))
+    print('Epoch: %d (lr=%.6f (%s), patient=%d (%d), decay=%d (%d))' % (epoch, lr, opt, patient, schedule, decay, max_decay))
     mae.train()
     recon_loss = 0
     kl_loss = 0
@@ -293,6 +317,12 @@ for epoch in range(1, args.epochs + 1):
         best_pkl_mean_loss = pkl_mean_loss
         best_pkl_std = pkl_std
         best_pkl_std_loss = pkl_std_loss
+    elif patient >= schedule:
+        lr = lr * decay_rate
+        optimizer = get_optimizer(lr, mae.parameters())
+        scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
+        patient = 0
+        decay +=1
     else:
         patient += 1
 
@@ -302,7 +332,7 @@ for epoch in range(1, args.epochs + 1):
         best_epoch))
     print('============================================================================================================================')
 
-    if lr < lr_min:
+    if lr < lr_min or decay == max_decay:
         break
 
 mae_shadow.load_state_dict(torch.load(model_name))

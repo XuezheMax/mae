@@ -25,8 +25,8 @@ class _PixelCNNPPCore(nn.Module):
             # state [b, h_channels, 32, 32]
         )
 
-        hidden_channels = 64
-        num_resnets = 4
+        hidden_channels = 96
+        num_resnets = 6
         self.core = PixelCNNPP(3, nc, hidden_channels, num_resnets, h_channels, dropout=dropout, activation=activation)
         self.output = nn.Sequential(
             nn.ELU(),
