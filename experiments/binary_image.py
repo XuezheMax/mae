@@ -29,7 +29,7 @@ parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='h
 parser.add_argument('--eta', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--gamma', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--free-bits', type=float, default=0.0, metavar='N', help='free bits used in training.')
-parser.add_argument('--polyak', type=float, default=0.999, help='Exponential decay rate of the sum of previous model iterates during Polyak averaging')
+parser.add_argument('--polyak', type=float, default=0.998, help='Exponential decay rate of the sum of previous model iterates during Polyak averaging')
 parser.add_argument('--schedule', type=int, default=20, help='schedule for learning rate decay')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 
@@ -299,8 +299,6 @@ for epoch in range(1, args.epochs + 1):
         best_pkl_std = pkl_std
         best_pkl_std_loss = pkl_std_loss
     elif patient >= schedule:
-        mae.load_state_dict(torch.load(model_name))
-        mae_shadow.load_state_dict(torch.load(model_name))
         lr = lr * decay_rate
         optimizer = optim.Adam(mae.parameters(), lr=lr)
         scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
