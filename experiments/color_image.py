@@ -30,7 +30,7 @@ parser.add_argument('--opt', choices=['adam', 'adamax'], help='optimization meth
 parser.add_argument('--eta', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--gamma', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--free-bits', type=float, default=0.0, metavar='N', help='free bits used in training.')
-parser.add_argument('--polyak', type=float, default=0.998, help='Exponential decay rate of the sum of previous model iterates during Polyak averaging')
+parser.add_argument('--polyak', type=float, default=0.999, help='Exponential decay rate of the sum of previous model iterates during Polyak averaging')
 parser.add_argument('--schedule', type=int, default=20, help='schedule for learning rate decay')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 
@@ -82,7 +82,7 @@ params = json.load(open(args.config, 'r'))
 json.dump(params, open(os.path.join(model_path, 'config.json'), 'w'), indent=2)
 mae = MAE.from_params(params).to(device)
 # initialize
-init_batch_size = 128
+init_batch_size = 64
 init_index = np.random.choice(train_index, init_batch_size, replace=False)
 init_data, _ = get_batch(train_data, init_index)
 init_data = init_data.to(device)
@@ -105,7 +105,7 @@ def get_optimizer(learning_rate, parameters):
 
 
 opt = args.opt
-betas = (0.9, 0.999)
+betas = (0.95, 0.9995)
 eps = 1e-8
 
 if opt == 'adam':
@@ -116,7 +116,7 @@ else:
     raise ValueError('unknown optimization method: %s' % opt)
 
 optimizer = get_optimizer(lr, mae.parameters())
-step_decay = 0.999995
+step_decay = 0.999998
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
 lr_min = lr / 20
 
