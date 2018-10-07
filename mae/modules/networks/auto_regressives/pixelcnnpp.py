@@ -15,7 +15,7 @@ def concat_elu(x, dim=1):
 
 
 def elu(x):
-    return F.elu(x, inplace=True)
+    return F.elu(x)
 
 
 class GatedResnetBlock(nn.Module):
