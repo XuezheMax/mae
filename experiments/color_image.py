@@ -203,7 +203,7 @@ def eval(eval_data, eval_index):
     pkl_std = 0.
     num_insts = 0
     num_batches = 0
-    for i, (data, _) in enumerate(iterate_minibatches(eval_data, eval_index, 200, False)):
+    for i, (data, _) in enumerate(iterate_minibatches(eval_data, eval_index, 100, False)):
         data = data.to(device)
 
         batch_size = len(data)
