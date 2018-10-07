@@ -15,7 +15,7 @@ class DenseNetBlock(nn.Module):
         super(DenseNetBlock, self).__init__()
         self.main = nn.Sequential(
             Conv2dWeightNorm(inplanes, 4 * growth_rate, kernel_size=1, bias=True),
-            nn.ELU(),
+            nn.ELU(inplace=True),
             conv3x3(4 * growth_rate, growth_rate)
         )
 
@@ -37,7 +37,7 @@ class DenseNet(nn.Module):
         blocks = []
         for step in range(steps):
             blocks.append(('block%d' % step, DenseNetBlock(inplanes, growth_rate)))
-            blocks.append(('activation%d' % step, nn.ELU()))
+            blocks.append(('activation%d' % step, nn.ELU(inplace=True)))
             inplanes += growth_rate
 
         self.main = nn.Sequential(OrderedDict(blocks))
