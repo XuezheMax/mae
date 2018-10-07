@@ -21,7 +21,7 @@ from mae.modules import exponentialMovingAverage
 
 parser = argparse.ArgumentParser(description='MAE Binary Image Example')
 parser.add_argument('--config', type=str, help='config file', required=True)
-parser.add_argument('--data', choices=['cifar10', 'lsun'], help='data set', required=True)
+parser.add_argument('--data', choices=['cifar10', 'lsun_bedroom', 'lsun_tower', 'lsun_church_outdoor'], help='data set', required=True)
 parser.add_argument('--batch-size', type=int, default=64, metavar='N', help='input batch size for training (default: 64)')
 parser.add_argument('--epochs', type=int, default=1000, metavar='N', help='number of epochs to train (default: 10)')
 parser.add_argument('--seed', type=int, default=524287, metavar='S', help='random seed (default: 524287)')
@@ -43,7 +43,8 @@ if args.cuda:
     torch.cuda.manual_seed(args.seed)
 device = torch.device('cuda') if args.cuda else torch.device('cpu')
 
-imageSize = 32
+dataset = args.data
+imageSize = 32 if dataset == 'cifar10' else 64
 nc = 3
 nx = imageSize * imageSize * nc
 training_k = 1
@@ -62,7 +63,6 @@ result_path = os.path.join(model_path, 'images')
 if not os.path.exists(result_path):
     os.makedirs(result_path)
 
-dataset = args.data
 train_data, test_data, n_val = load_datasets(dataset)
 
 train_index = np.arange(len(train_data))
@@ -73,6 +73,10 @@ train_index = train_index[:-n_val]
 test_index = np.arange(len(test_data))
 np.random.shuffle(test_index)
 
+if dataset.startswith('lsun'):
+    # for lsun data, repeat val and test data five times for random corps.
+    val_index = np.concatenate([val_index, val_index, val_index, val_index, val_index])
+    test_index = np.concatenate([test_index, test_index, test_index, test_index, test_index])
 print(len(train_index))
 print(len(val_index))
 print(len(test_data))
