@@ -82,22 +82,22 @@ class DenseNetEncoderCoreColorImage64x64(DenseNetEncoderCoreColorImage32x32):
             DenseNet(self.nc, 15, 3),
             # state [48, 64, 64]
             Conv2dWeightNorm(48, 48, 3, 2, 1, bias=True),
-            nn.ELU(inplace=True),
+            nn.ELU(),
             # state [48, 32, 32]
             DenseNet(48, 16, 3),
             # state [96, 32, 32]
             Conv2dWeightNorm(96, 96, 3, 2, 1, bias=True),
-            nn.ELU(inplace=True),
+            nn.ELU(),
             # state [96, 16, 16]
             DenseNet(96, 16, 3),
             # state [144, 16, 16]
             Conv2dWeightNorm(144, 144, 3, 2, 1, bias=True),
-            nn.ELU(inplace=True),
+            nn.ELU(),
             # state [144, 8, 8]
             DenseNet(144, 16, 3),
             # state [192, 8, 8]
             Conv2dWeightNorm(192, 96, 1, 1, bias=True),
-            nn.ELU(inplace=True),
+            nn.ELU(),
             # state [96, 8, 8]
             Conv2dWeightNorm(96, 2 * self.z_channels, 1, 1, bias=True),
             # [2 * z_channels, 8, 8]
