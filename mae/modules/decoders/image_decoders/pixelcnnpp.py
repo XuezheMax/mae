@@ -20,7 +20,7 @@ class _PixelCNNPPCore(nn.Module):
             blocks.append(('level%d' % i, ConvTranspose2dWeightNorm(in_channels, in_channels // 2, 3, 2, 1, 1, bias=True)))
             blocks.append(('elu%d' %i, nn.ELU()))
             in_channels = in_channels // 2
-        blocks.append(('h_level', Conv2dWeightNorm(in_channels, hidden_channels, 1)))
+        blocks.append(('h_level', Conv2dWeightNorm(in_channels, h_channels, 1)))
         self.z_transform = nn.Sequential(OrderedDict(blocks))
 
         self.core = PixelCNNPP(levels, nc, hidden_channels, num_resnets, h_channels, dropout=dropout, activation=activation)
