@@ -33,6 +33,7 @@ parser.add_argument('--free-bits', type=float, default=0.0, metavar='N', help='f
 parser.add_argument('--polyak', type=float, default=0.999, help='Exponential decay rate of the sum of previous model iterates during Polyak averaging')
 parser.add_argument('--schedule', type=int, default=20, help='schedule for learning rate decay')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
+parser.add_argument('--data_path', help='path for data file.', default=None)
 
 args = parser.parse_args()
 args.cuda = torch.cuda.is_available()
@@ -63,7 +64,7 @@ result_path = os.path.join(model_path, 'images')
 if not os.path.exists(result_path):
     os.makedirs(result_path)
 
-train_data, test_data, n_val = load_datasets(dataset)
+train_data, test_data, n_val = load_datasets(dataset, args.data_path)
 
 train_index = np.arange(len(train_data))
 np.random.shuffle(train_index)
