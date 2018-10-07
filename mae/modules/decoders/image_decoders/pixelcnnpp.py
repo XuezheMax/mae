@@ -154,7 +154,7 @@ class PixelCNNPPDecoderColorImage64x64(PixelCNNPPDecoderColorImage32x32):
         super(PixelCNNPPDecoderColorImage64x64, self).__init__(z_channels, h_channels, nmix=nmix, dropout=dropout, activation=activation, ngpu=ngpu)
         self.image_size = 64
 
-        levels = 4
+        levels = 3
         hidden_channels = 64
         num_resnets = 4
         self.core = _PixelCNNPPCore(self.nc, z_channels, h_channels, hidden_channels, levels, num_resnets, nmix, dropout=dropout, activation=activation)

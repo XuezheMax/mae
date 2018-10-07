@@ -80,7 +80,7 @@ if dataset.startswith('lsun'):
     test_index = np.concatenate([test_index, test_index, test_index, test_index, test_index])
 print(len(train_index))
 print(len(val_index))
-print(len(test_data))
+print(len(test_index))
 
 polyak_decay = args.polyak
 params = json.load(open(args.config, 'r'))
