@@ -11,10 +11,10 @@
       "height": 8,
       "width": 8,
       "num_blocks": 4,
-      "kernel_size": 5,
-      "num_hiddens": 3,
+      "kernel_size": 3,
+      "num_hiddens": 2,
       "hidden_channels": 128,
-      "hidden_kernels": [3, 3, 3]
+      "hidden_kernels": [3, 3]
     },
     "ngpu": 1
   },
@@ -23,7 +23,7 @@
     "z_channels": 16,
     "h_channels": 16,
     "dropout": 0.5,
-    "activation": "concat_elu",
+    "activation": "elu",
     "nmix": 10,
     "ngpu": 1
   }

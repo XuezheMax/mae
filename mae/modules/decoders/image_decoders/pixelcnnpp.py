@@ -59,7 +59,7 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
     See paper https://arxiv.org/abs/1701.05517
     """
 
-    def __init__(self, z_channels, h_channels, nmix, dropout=0., activation='concat_elu', ngpu=1):
+    def __init__(self, z_channels, h_channels, nmix, dropout=0., activation='elu', ngpu=1):
         """
 
         Args:
@@ -76,8 +76,8 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
         self.image_size = 32
 
         levels = 3
-        hidden_channels = 64
-        num_resnets = 4
+        hidden_channels = 96
+        num_resnets = 5
         self.core = _PixelCNNPPCore(self.nc, z_channels, h_channels, hidden_channels, levels, num_resnets, nmix, dropout=dropout, activation=activation)
         if ngpu > 1:
             self.core = nn.DataParallel(self.core, device_ids=list(range(ngpu)))
@@ -141,7 +141,7 @@ class PixelCNNPPDecoderColorImage64x64(PixelCNNPPDecoderColorImage32x32):
     See paper https://arxiv.org/abs/1701.05517
     """
 
-    def __init__(self, z_channels, h_channels, nmix, dropout=0., activation='concat_elu', ngpu=1):
+    def __init__(self, z_channels, h_channels, nmix, dropout=0., activation='elu', ngpu=1):
         """
 
         Args:
