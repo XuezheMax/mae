@@ -154,9 +154,9 @@ class PixelCNNPPDecoderColorImage64x64(PixelCNNPPDecoderColorImage32x32):
         super(PixelCNNPPDecoderColorImage64x64, self).__init__(z_channels, h_channels, nmix=nmix, dropout=dropout, activation=activation, ngpu=ngpu)
         self.image_size = 64
 
-        levels = 3
+        levels = 4
         hidden_channels = 64
-        num_resnets = 4
+        num_resnets = 3
         self.core = _PixelCNNPPCore(self.nc, z_channels, h_channels, hidden_channels, levels, num_resnets, nmix, dropout=dropout, activation=activation)
         if ngpu > 1:
             self.core = nn.DataParallel(self.core, device_ids=list(range(ngpu)))
