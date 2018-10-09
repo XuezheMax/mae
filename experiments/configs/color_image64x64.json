@@ -13,7 +13,7 @@
       "num_blocks": 3,
       "kernel_size": 3,
       "num_hiddens": 2,
-      "hidden_channels": 128,
+      "hidden_channels": 256,
       "hidden_kernels": [3, 3]
     },
     "ngpu": 2
