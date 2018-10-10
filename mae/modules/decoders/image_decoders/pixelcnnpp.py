@@ -11,35 +11,49 @@ from mae.modules.utils import sample_from_discretized_mix_logistic
 
 
 class _PixelCNNPPCore(nn.Module):
-    def __init__(self, nc, z_channels, h_channels, nmix, dropout=0.):
+    def __init__(self, nc, z_channels, h_channels, nmix, dropout=0., activation='concat_elu'):
         super(_PixelCNNPPCore, self).__init__()
         self.z_transform = nn.Sequential(
             # state [b, z_channels, 8, 8]
-            ConvTranspose2dWeightNorm(z_channels, z_channels // 2, 3, 2, 1, 1, bias=False),
+            ConvTranspose2dWeightNorm(z_channels, z_channels // 2, 3, 2, 1, 1, bias=True),
             nn.ELU(),
             # state [b, z_channels / 2, 16, 16]
-            ConvTranspose2dWeightNorm(z_channels // 2, z_channels // 4, 3, 2, 1, 1, bias=False),
+            ConvTranspose2dWeightNorm(z_channels // 2, z_channels // 4, 3, 2, 1, 1, bias=True),
             nn.ELU(),
             # state [b, z_channels / 4, 32, 32]
             Conv2dWeightNorm(z_channels // 4, h_channels, 1),
-            nn.ELU(),
             # state [b, h_channels, 32, 32]
         )
 
-        hidden_channels = 64
-        num_resnets = 4
-        self.core = PixelCNNPP(3, nc, hidden_channels, num_resnets, h_channels, dropout=dropout)
+        hidden_channels = 96
+        num_resnets = 6
+        self.core = PixelCNNPP(3, nc, hidden_channels, num_resnets, h_channels, dropout=dropout, activation=activation)
         self.output = nn.Sequential(
-            # state [64, 32, 32]
-            Conv2dWeightNorm(hidden_channels, hidden_channels, 1, bias=False),
             nn.ELU(),
-            # state [64, 32, 32]
-            Conv2dWeightNorm(64, (nc * 3 + 1) * nmix, 1, bias=False)
+            # state [hidden_channels, 32, 32]
+            Conv2dWeightNorm(hidden_channels, hidden_channels, 1, bias=True),
+            nn.ELU(),
+            # state [hidden_channels * 2, 32, 32]
+            Conv2dWeightNorm(hidden_channels, (nc * 3 + 1) * nmix, 1, bias=True)
+            # state [10 * nmix, 32, 32]
         )
 
     def forward(self, x, z):
         h = self.z_transform(z)
         return self.output(self.core(x, h=h))
+
+    def initialize(self, x, z, init_scale=1.0):
+        h = z
+        for layer in self.z_transform:
+            if isinstance(layer, nn.ELU):
+                h = layer(h)
+            else:
+                h = layer.initialize(h, init_scale=init_scale)
+        output = self.core.initialize(x, h=h, init_scale=init_scale)
+        assert len(self.output) == 4
+        output = self.output[1].initialize(self.output[0](output), init_scale=init_scale)
+        output = self.output[3].initialize(self.output[2](output), init_scale=init_scale)
+        return output
 
 
 class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
@@ -48,7 +62,7 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
     See paper https://arxiv.org/abs/1701.05517
     """
 
-    def __init__(self, z_channels, h_channels, nmix, dropout=0., ngpu=1):
+    def __init__(self, z_channels, h_channels, nmix, dropout=0., activation='concat_elu', ngpu=1):
         """
 
         Args:
@@ -63,7 +77,7 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
         self.H = 8
         self.W = 8
 
-        self.core = _PixelCNNPPCore(self.nc, z_channels, h_channels, nmix, dropout=dropout)
+        self.core = _PixelCNNPPCore(self.nc, z_channels, h_channels, nmix, dropout=dropout, activation=activation)
         if ngpu > 1:
             self.core = nn.DataParallel(self.core, device_ids=list(range(ngpu)))
 
@@ -108,6 +122,12 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
 
     def forward(self, x, z):
         return self.core(x, z)
+
+    @overrides
+    def initialize(self, x, z, init_scale=1.0):
+        core = self.core.module if isinstance(self.core, nn.DataParallel) else self.core
+        assert isinstance(core, _PixelCNNPPCore)
+        return core.initialize(x, z, init_scale=init_scale)
 
     @classmethod
     def from_params(cls, params: Dict) -> "PixelCNNPPDecoderColorImage32x32":

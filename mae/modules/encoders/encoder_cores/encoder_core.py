@@ -21,6 +21,20 @@ class EncoderCore(nn.Module):
         """
         raise NotImplementedError
 
+    def initialize(self, x, init_scale=1.0):
+        """
+
+        Args:
+            x: Tensor
+                The input data used for initialization
+            init_scale: float
+                initial scale
+        Returns: Tensor
+            the tensor of output
+
+        """
+        raise NotImplementedError
+
     @classmethod
     def register(cls, name: str):
         EncoderCore._registry[name] = cls
