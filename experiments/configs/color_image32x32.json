@@ -16,15 +16,15 @@
       "hidden_channels": 128,
       "hidden_kernels": [3, 3, 3]
     },
-    "ngpu": 1
+    "ngpu": 2
   },
   "decoder": {
     "type": "pixelcnn++_color_32x32",
     "z_channels": 16,
     "h_channels": 16,
     "dropout": 0.5,
-    "activation": "elu",
+    "activation": "concat_elu",
     "nmix": 10,
-    "ngpu": 1
+    "ngpu": 2
   }
 }
