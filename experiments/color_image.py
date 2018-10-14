@@ -121,7 +121,7 @@ else:
     raise ValueError('unknown optimization method: %s' % opt)
 
 optimizer = get_optimizer(lr, mae.parameters())
-step_decay = 0.999998
+step_decay = 0.999995
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
 lr_min = lr / 20
 
