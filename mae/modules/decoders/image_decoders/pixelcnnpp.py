@@ -77,7 +77,7 @@ class PixelCNNPPDecoderColorImage32x32(ColorImageDecoder):
 
         levels = 3
         hidden_channels = 96
-        num_resnets = 6
+        num_resnets = 5
         self.core = _PixelCNNPPCore(self.nc, z_channels, h_channels, hidden_channels, levels, num_resnets, nmix, dropout=dropout, activation=activation)
         if ngpu > 1:
             self.core = nn.DataParallel(self.core, device_ids=list(range(ngpu)))
