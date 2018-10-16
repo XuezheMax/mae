@@ -60,13 +60,14 @@ def logavgexp(x, dim=None):
 
 def discretized_mix_logistic_loss(x, means, logscales, coeffs, bin_size, lower, upper, logit_probs):
     """
-
+    discretized mixture logistic distribution for color images
     Args:
         x: [batch, 1, 1, nc, H, W]
         means: [batch, nsamples, nmix, nc, H, W]
         logscales: [batch, nsamples, nmix, nc, H, W]
         coeffs: [batch, nsamples, nmix, nc, H, W]
         bin_size: float
+            The segment for cdf is [x-binsize, x+binsize]
         lower: float
         upper: float
         logit_probs:, [batch, nsamples, nmix, H, W]

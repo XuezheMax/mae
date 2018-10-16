@@ -1,0 +1,30 @@
+{
+  "encoder": {
+    "type": "gaussian",
+    "core": {
+      "type": "densenet_color_32x32",
+      "z_channels": 16
+    },
+    "prior_flow": {
+      "type": "af2d_made",
+      "in_channels": 16,
+      "height": 8,
+      "width": 8,
+      "num_blocks": 4,
+      "kernel_size": 3,
+      "num_hiddens": 3,
+      "hidden_channels": 128,
+      "hidden_kernels": [3, 3, 3]
+    },
+    "ngpu": 2
+  },
+  "decoder": {
+    "type": "pixelcnn++_color_32x32",
+    "z_channels": 16,
+    "h_channels": 16,
+    "dropout": 0.5,
+    "activation": "concat_elu",
+    "nmix": 10,
+    "ngpu": 2
+  }
+}

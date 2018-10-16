@@ -10,8 +10,9 @@ def load_datasets(dataset, data_path=None):
         return load_omniglot()
     elif dataset == 'mnist':
         return load_mnist()
-    elif dataset == 'lsun':
-        return load_lsun(data_path)
+    elif dataset.startswith('lsun'):
+        category = dataset[5:]
+        return load_lsun(data_path, category)
     elif dataset == 'cifar10':
         return load_cifar10()
     else:
@@ -51,25 +52,25 @@ def load_mnist():
            2000
 
 
-def load_lsun(data_path):
-    imageSize = 32
-    train_data = datasets.LSUN(data_path, classes=['bedroom_train'],
+def load_lsun(data_path, category):
+    imageSize = 64
+    train_data = datasets.LSUN(data_path, classes=[category + '_train'],
                                transform=transforms.Compose([
-                                   transforms.Resize(imageSize),
-                                   transforms.CenterCrop(imageSize),
+                                   transforms.Resize(96),
+                                   transforms.RandomCrop(imageSize),
                                    transforms.ToTensor(),
                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                                ]))
 
-    val_data = datasets.LSUN(data_path, classes=['bedroom_val'],
+    val_data = datasets.LSUN(data_path, classes=[category + '_val'],
                              transform=transforms.Compose([
-                                 transforms.Resize(imageSize),
-                                 transforms.CenterCrop(imageSize),
+                                 transforms.Resize(96),
+                                 transforms.RandomCrop(imageSize),
                                  transforms.ToTensor(),
                                  transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                              ]))
 
-    return train_data, val_data, 5000
+    return train_data, val_data, 4000
 
 
 def load_cifar10():
