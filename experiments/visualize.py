@@ -23,7 +23,7 @@ from mae.modules import MAE
 parser = argparse.ArgumentParser(description='MAE Binary Image Example')
 parser.add_argument('--data', choices=['mnist', 'omniglot', 'cifar10', 'lsun'], help='data set', required=True)
 parser.add_argument('--mode', choices=['generate', 'tsne'], help='mode', required=True)
-parser.add_argument('--seed', type=int, default=65537, metavar='S', help='random seed (default: 524287)')
+parser.add_argument('--seed', type=int, default=65537, metavar='S', help='random seed (default: 65537)')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 
 args = parser.parse_args()
