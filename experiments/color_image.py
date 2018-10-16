@@ -31,7 +31,7 @@ parser.add_argument('--eta', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--gamma', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--free-bits', type=float, default=0.0, metavar='N', help='free bits used in training.')
 parser.add_argument('--polyak', type=float, default=0.999, help='Exponential decay rate of the sum of previous model iterates during Polyak averaging')
-parser.add_argument('--schedule', type=int, default=20, help='schedule for learning rate decay')
+parser.add_argument('--schedule', type=int, default=50, help='schedule for learning rate decay')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 parser.add_argument('--data_path', help='path for data file.', default=None)
 
@@ -121,7 +121,7 @@ else:
     raise ValueError('unknown optimization method: %s' % opt)
 
 optimizer = get_optimizer(lr, mae.parameters())
-step_decay = 0.999998
+step_decay = 0.999995
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=step_decay)
 lr_min = lr / 20
 
