@@ -30,7 +30,7 @@ parser.add_argument('--opt', choices=['adam', 'adamax'], help='optimization meth
 parser.add_argument('--eta', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--gamma', type=float, default=0.0, metavar='N', help='')
 parser.add_argument('--free-bits', type=float, default=0.0, metavar='N', help='free bits used in training.')
-parser.add_argument('--polyak', type=float, default=0.999, help='Exponential decay rate of the sum of previous model iterates during Polyak averaging')
+parser.add_argument('--polyak', type=float, default=0.9995, help='Exponential decay rate of the sum of previous model iterates during Polyak averaging')
 parser.add_argument('--schedule', type=int, default=50, help='schedule for learning rate decay')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 parser.add_argument('--data_path', help='path for data file.', default=None)
@@ -110,7 +110,7 @@ def get_optimizer(learning_rate, parameters):
 
 
 opt = args.opt
-betas = (0.95, 0.9995)
+betas = (0.95, polyak_decay)
 eps = 1e-8
 
 if opt == 'adam':
