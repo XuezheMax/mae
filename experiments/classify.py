@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(description='MAE Binary Image Example')
 parser.add_argument('--data', choices=['mnist', 'omniglot', 'cifar10', 'lsun'], help='data set', default="mnist", required=False)
 parser.add_argument('--seed', type=int, default=65537, metavar='S', help='random seed (default: 524287)')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
-parser.add_argument("--method", choices=["kmeans", "knn", "svm", "linear"], required=True)
+parser.add_argument("--method", choices=["kmeans", "knn", "svm-linear", "linear", "svm-rbf"], required=True)
 
 args = parser.parse_args()
 args.cuda = torch.cuda.is_available()
@@ -125,8 +125,8 @@ def knn(train_data, train_label, test_data, test_label, n_neighbors=10):
     return acc
 
 
-def svm(train_data, train_label, test_data, test_label):
-    clf = SVC(kernel='linear')
+def svm(train_data, train_label, test_data, test_label, kernel='linear'):
+    clf = SVC(kernel=kernel)
     clf.fit(train_data, train_label)
     acc = clf.score(test_data, test_label)
     print(f"Accuracy on test data is {acc}")
@@ -238,8 +238,10 @@ if __name__ == "__main__":
                     train_codes, train_labels = latent_codes_train[inds[:i], :], labels_train[inds[:i]],
                     if method == "knn":
                         acc = knn(train_codes, train_labels, latent_codes_test, labels_test, n_neighbors)
-                    elif method == "svm":
-                        acc = svm(train_codes, train_labels, latent_codes_test, labels_test)
+                    elif method == "svm-linear":
+                        acc = svm(train_codes, train_labels, latent_codes_test, labels_test, kernel='linear')
+                    elif method == "svm-rbf":
+                        acc = svm(train_codes, train_labels, latent_codes_test, labels_test, kernel='rbf')
                     accs.append(acc)
                 accs = np.array(accs)
                 avg_acc = np.mean(accs)
