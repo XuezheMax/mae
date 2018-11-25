@@ -13,6 +13,7 @@ from matplotlib import colors as mcolors
 
 colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
 from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 
 import torch
 from torchvision.utils import save_image
@@ -22,7 +23,7 @@ from mae.modules import MAE
 
 parser = argparse.ArgumentParser(description='MAE Binary Image Example')
 parser.add_argument('--data', choices=['mnist', 'omniglot', 'cifar10', 'lsun'], help='data set', required=True)
-parser.add_argument('--mode', choices=['generate', 'tsne'], help='mode', required=True)
+parser.add_argument('--mode', choices=['generate', 'tsne', 'pca'], help='mode', required=True)
 parser.add_argument('--seed', type=int, default=65537, metavar='S', help='random seed (default: 65537)')
 parser.add_argument('--model_path', help='path for saving model file.', required=True)
 
@@ -146,10 +147,45 @@ def tsne():
     fig.savefig(os.path.join(result_path, 'tSNE.png'), bbox_inches='tight')
 
 
+def pca():
+    assert dataset in ['mnist', 'cifar10']
+    time_start = time.time()
+    print('encoding:')
+    latent_codes_train, labels_train = encode(train_data, train_index)
+    latent_codes_test, labels_test = encode(test_data, test_index)
+
+    latent_codes = torch.cat([latent_codes_train, latent_codes_test], dim=0).cpu().numpy()
+    labels = torch.cat([labels_train, labels_test], dim=0).cpu().numpy()
+    print('time: {:.1f}s'.format(time.time() - time_start))
+
+    print('PCA visualizing:')
+    color_names = ['orangered', 'goldenrod', 'olivedrab', 'mediumseagreen', 'forestgreen', 'dodgerblue', 'steelblue', 'mediumslateblue', 'orchid', 'hotpink']
+
+    pca = PCA(n_components=3)
+    pca_results = pca.fit_transform(latent_codes)
+
+    opacity = 0.2
+    fig, ax = plt.subplots(figsize=(10, 10))
+    for i in range(10):
+        color = colors[color_names[i]]
+        ax.scatter(pca_results[labels == i, 0], pca_results[labels == i, 1], s=70, label=str(i), c=color, alpha=opacity, linewidths=0)
+    ax.tick_params(axis='both', which='both',
+                   bottom=False, top=False, left=False, right=False,
+                   labelbottom=False, labeltop=False, labelleft=False, labelright=False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.grid(False)
+    fig.savefig(os.path.join(result_path, 'pca.png'), bbox_inches='tight')
+
+
 with torch.no_grad():
     if mode == 'generate':
         generate_x()
     elif mode == 'tsne':
         tsne()
+    elif mode == 'pca':
+        pca()
     else:
         raise ValueError('unknown mode: {}'.format(mode))
