@@ -1,2 +1,2 @@
-# mae
-maximum information auto-encoder
+# MAE
+MAE: Mutual Posterior-Divergence Regularization for Variational AutoEncoders
